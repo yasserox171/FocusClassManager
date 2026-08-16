@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900;
+  }
+
+  /* Arabic gets its own face; the class is toggled by i18n/config.ts. */
+  .font-arabic body,
+  .font-arabic {
+    font-family: 'Cairo', 'Tajawal', 'Segoe UI', sans-serif;
+  }
+}
+
+@layer components {
+  /* react-big-calendar restyled to match the rest of the interface. */
+  .faas-calendar .rbc-calendar {
+    @apply text-sm;
+  }
+
+  .faas-calendar .rbc-toolbar {
+    @apply mb-3 flex flex-wrap items-center justify-between gap-2;
+  }
+
+  .faas-calendar .rbc-toolbar button {
+    @apply rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition;
+  }
+
+  .faas-calendar .rbc-toolbar button:hover {
+    @apply bg-slate-50;
+  }
+
+  .faas-calendar .rbc-toolbar button.rbc-active {
+    @apply border-brand-600 bg-brand-600 text-white;
+  }
+
+  .faas-calendar .rbc-toolbar-label {
+    @apply text-sm font-semibold text-slate-800;
+  }
+
+  .faas-calendar .rbc-header {
+    @apply border-slate-200 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+
+  .faas-calendar .rbc-month-view,
+  .faas-calendar .rbc-time-view {
+    @apply rounded-lg border-slate-200;
+  }
+
+  .faas-calendar .rbc-today {
+    @apply bg-brand-50;
+  }
+
+  .faas-calendar .rbc-off-range-bg {
+    @apply bg-slate-50;
+  }
+
+  .faas-calendar .rbc-event {
+    @apply border-none px-1.5 py-0.5;
+  }
+
+  .faas-calendar .rbc-event:focus {
+    @apply outline-none ring-2 ring-brand-300;
+  }
+
+  .faas-calendar .rbc-show-more {
+    @apply text-xs font-medium text-brand-600;
+  }
+
+  /* RTL: the library positions time gutters with left/right offsets. */
+  [dir='rtl'] .faas-calendar .rbc-time-content > * + * > * {
+    border-left: none;
+    border-right: 1px solid #e2e8f0;
+  }
+
+  [dir='rtl'] .faas-calendar .rbc-month-row + .rbc-month-row {
+    border-top: 1px solid #e2e8f0;
+  }
+}
