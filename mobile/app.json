@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Focus Salles",
+    "slug": "focus-class-manager",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "focussalles",
+    "primaryColor": "#2563eb",
+    "splash": {
+      "backgroundColor": "#2563eb",
+      "resizeMode": "contain",
+      "image": "./assets/splash-icon.png"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ma.centrefocus.salles",
+      "buildNumber": "1",
+      "infoPlist": {
+        "CFBundleDisplayName": "Focus Salles",
+        "CFBundleLocalizations": ["fr", "ar"],
+        "CFBundleDevelopmentRegion": "fr"
+      }
+    },
+    "android": {
+      "package": "ma.centrefocus.salles",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["android.permission.INTERNET"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": ["expo-localization"],
+    "extra": {
+      "comment": "API host is set with EXPO_PUBLIC_API_URL at build time; see src/config.ts"
+    }
+  }
+}
