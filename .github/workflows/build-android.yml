@@ -1,0 +1,111 @@
+name: Build Android APK
+
+# Le NDK Android n'est distribue qu'en linux-x86_64 : la compilation est
+# impossible sur une machine ARM64. Les runners GitHub sont x86_64, ils font
+# donc le travail que le serveur ne peut pas faire.
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "Adresse de l'API (doit se terminer par /api)"
+        required: false
+        default: "https://salles.centrefocus.ma/api"
+  push:
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/build-android.yml'
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      # Les secrets ne sont pas lisibles dans un `if:` de job ; on les reduit
+      # ici a un booleen utilisable par les etapes.
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      API_URL: ${{ inputs.api_url || 'https://salles.centrefocus.ma/api' }}
+      # Lu par Metro au moment du bundle JS, pendant assembleRelease.
+      EXPO_PUBLIC_API_URL: ${{ inputs.api_url || 'https://salles.centrefocus.ma/api' }}
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      # Versions imposees par React Native 0.86. Les installer explicitement
+      # evite que Gradle les telecharge au milieu de la compilation.
+      - name: Installer le NDK et CMake
+        run: sdkmanager --install "ndk;27.1.12297006" "cmake;3.22.1" > /dev/null
+
+      - name: Installer les dependances
+        run: npm ci
+
+      - name: Verifier les types
+        run: npx tsc --noEmit
+
+      - name: Generer le projet natif
+        run: npx expo prebuild --platform android --no-install
+
+      # Sans cle de signature, le gabarit Expo signe la release avec la cle de
+      # debug : l'APK s'installe, mais Android refusera plus tard une mise a
+      # jour signee autrement.
+      - name: Configurer la signature de release
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          echo "$KEYSTORE" | base64 -d > android/app/release.keystore
+          {
+            echo ""
+            echo "FOCUS_STORE_FILE=release.keystore"
+            echo "FOCUS_KEY_ALIAS=$KEY_ALIAS"
+            echo "FOCUS_STORE_PASSWORD=$STORE_PASSWORD"
+            echo "FOCUS_KEY_PASSWORD=$STORE_PASSWORD"
+          } >> android/gradle.properties
+          python3 scripts/apply-release-signing.py android
+
+      - name: Avertir si la signature est celle de debug
+        if: env.HAS_KEYSTORE != 'true'
+        run: |
+          echo "::warning::Aucun secret ANDROID_KEYSTORE_BASE64 : l'APK sera signe avec la cle de debug."
+
+      - name: Compiler l'APK
+        working-directory: mobile/android
+        run: ./gradlew :app:assembleRelease --no-daemon
+
+      - name: Rassembler le resultat
+        run: |
+          APK=$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)
+          test -n "$APK" || { echo "aucun APK produit"; exit 1; }
+          cp "$APK" focus-salles.apk
+          ls -lh focus-salles.apk
+          {
+            echo "### APK construit"
+            echo ""
+            echo "- taille : $(du -h focus-salles.apk | cut -f1)"
+            echo "- API : \`${API_URL}\`"
+            echo "- signature : ${{ env.HAS_KEYSTORE == 'true' && 'cle de release' || 'cle de debug' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: focus-salles-apk
+          path: mobile/focus-salles.apk
+          if-no-files-found: error
+          retention-days: 30
