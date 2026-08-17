@@ -305,9 +305,28 @@ class BookingApiTestCase(APITestCase):
         self.assertEqual(self.client.get("/api/bookings/?period=past").data["count"], 1)
         self.assertEqual(self.client.get("/api/bookings/?period=upcoming").data["count"], 1)
 
-    def test_authentication_is_required(self):
+    def test_anonymous_can_read_bookings(self):
+        Booking.objects.create(
+            room=self.room,
+            title="Publique",
+            start_datetime=timezone.now() + timedelta(days=1),
+            end_datetime=timezone.now() + timedelta(days=1, hours=1),
+        )
         self.client.force_authenticate(None)
-        self.assertEqual(self.client.get("/api/bookings/").status_code, 401)
+        response = self.client.get("/api/bookings/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 1)
+
+    def test_anonymous_cannot_write_bookings(self):
+        self.client.force_authenticate(None)
+        self.assertIn(self.client.post("/api/bookings/", self._payload(), format="json").status_code, {401, 403})
+        self.assertEqual(Booking.objects.count(), 0)
+
+    def test_non_admin_cannot_create_bookings(self):
+        self.client.force_authenticate(self.staff)
+        response = self.client.post("/api/bookings/", self._payload(), format="json")
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(Booking.objects.count(), 0)
 
 
 class RoomApiTests(APITestCase):
@@ -347,6 +366,24 @@ class RoomApiTests(APITestCase):
 
         restored = self.client.post(f"/api/rooms/{room.id}/restore/")
         self.assertEqual(restored.status_code, 200)
+        self.assertTrue(Room.objects.filter(pk=room.pk).exists())
+
+    def test_anonymous_can_read_rooms_but_not_write(self):
+        room = Room.objects.create(name="Salle Publique", code="pub", capacity=15)
+        self.client.force_authenticate(None)
+
+        listing = self.client.get("/api/rooms/")
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(listing.data["count"], 1)
+
+        for verb, url in (
+            ("post", "/api/rooms/"),
+            ("patch", f"/api/rooms/{room.id}/"),
+            ("delete", f"/api/rooms/{room.id}/"),
+        ):
+            with self.subTest(verb=verb):
+                response = getattr(self.client, verb)(url, {"name": "X"}, format="json")
+                self.assertIn(response.status_code, {401, 403})
         self.assertTrue(Room.objects.filter(pk=room.pk).exists())
 
     def test_non_admin_cannot_write_rooms(self):
@@ -400,6 +437,12 @@ class AnalyticsApiTests(APITestCase):
         )
         self.room = Room.objects.create(name="Salle Stats", code="stats", capacity=20)
         self.client.force_authenticate(self.admin)
+
+    def test_anonymous_can_read_statistics(self):
+        self.client.force_authenticate(None)
+        for endpoint in ("summary", "room-usage", "peak-hours", "timeline", "resources"):
+            with self.subTest(endpoint=endpoint):
+                self.assertEqual(self.client.get(f"/api/analytics/{endpoint}/").status_code, 200)
 
     def test_summary_endpoint(self):
         now = timezone.now()
@@ -490,11 +533,19 @@ class EmployeeApiTests(APITestCase):
         employee = Employee.objects.get()
         self.assertEqual(list(employee.managed_rooms.all()), [self.room])
 
-    def test_room_manager_cannot_list_employees(self):
-        self.client.force_authenticate(self.manager_user)
-        self.assertEqual(self.client.get("/api/employees/").status_code, 403)
+    def test_anonymous_can_list_employees(self):
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get("/api/employees/").status_code, 200)
 
-    def test_room_manager_can_edit_bookings_of_their_room(self):
+    def test_anonymous_cannot_write_employees(self):
+        self.client.force_authenticate(None)
+        response = self.client.post(
+            "/api/employees/", {"full_name": "Intrus", "role": Role.STAFF}, format="json"
+        )
+        self.assertIn(response.status_code, {401, 403})
+
+    def test_room_manager_cannot_edit_bookings_of_their_room(self):
+        """Only an administrator writes now, even on a room the user manages."""
         employee = Employee.objects.create(
             full_name="Gardien", role=Role.ROOM_MANAGER, user=self.manager_user
         )
@@ -508,7 +559,9 @@ class EmployeeApiTests(APITestCase):
         response = self.client.patch(
             f"/api/bookings/{booking.id}/", {"title": "Modifiée"}, format="json"
         )
-        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.status_code, 403)
+        booking.refresh_from_db()
+        self.assertEqual(booking.title, "À modifier")
 
     def test_user_cannot_edit_someone_elses_booking(self):
         start = timezone.now() + timedelta(days=2)

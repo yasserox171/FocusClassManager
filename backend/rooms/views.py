@@ -6,7 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from users.permissions import CanReportResourceIssue, IsAdminOrReadOnly
+from users.permissions import PublicReadAdminWrite
 
 from .filters import ResourceIssueFilter, RoomFilter
 from .models import IssueStatus, ResourceIssue, ResourceType, Room, RoomStatus
@@ -35,7 +35,7 @@ def _parse_datetime(raw: str | None, field: str):
 class ResourceTypeViewSet(viewsets.ModelViewSet):
     queryset = ResourceType.objects.all()
     serializer_class = ResourceTypeSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [PublicReadAdminWrite]
     search_fields = ("code", "name_fr", "name_ar")
     ordering_fields = ("name_fr", "code")
     pagination_class = None
@@ -47,7 +47,7 @@ class RoomViewSet(viewsets.ModelViewSet):
     every listing but its bookings history stays intact.
     """
 
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [PublicReadAdminWrite]
     filterset_class = RoomFilter
     search_fields = ("name", "name_ar", "code", "location", "description")
     ordering_fields = ("name", "capacity", "status", "created_at")
@@ -106,7 +106,7 @@ class RoomViewSet(viewsets.ModelViewSet):
         return Response(payload)
 
     @extend_schema(responses=RoomSerializer)
-    @action(detail=True, methods=["post"], url_path="restore", permission_classes=[IsAdminOrReadOnly])
+    @action(detail=True, methods=["post"], url_path="restore", permission_classes=[PublicReadAdminWrite])
     def restore(self, request, pk=None):
         """Bring a soft deleted room back."""
         room = Room.all_objects.filter(pk=pk).first()
@@ -132,7 +132,7 @@ class ResourceIssueViewSet(viewsets.ModelViewSet):
 
     queryset = ResourceIssue.objects.select_related("room", "room_resource", "reported_by")
     serializer_class = ResourceIssueSerializer
-    permission_classes = [CanReportResourceIssue]
+    permission_classes = [PublicReadAdminWrite]
     filterset_class = ResourceIssueFilter
     search_fields = ("description", "room__name")
     ordering_fields = ("created_at", "status")

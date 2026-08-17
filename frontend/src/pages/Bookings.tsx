@@ -37,7 +37,7 @@ type ViewMode = 'calendar' | 'list'
 export function Bookings() {
   const { t, i18n } = useTranslation()
   const toast = useToast()
-  const { user, isAdmin } = useAuth()
+  const { isAdmin } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [mode, setMode] = useState<ViewMode>('calendar')
@@ -116,10 +116,8 @@ export function Bookings() {
 
   const refresh = () => setRefreshKey((value) => value + 1)
 
-  const canEdit = (booking: Booking) =>
-    isAdmin ||
-    booking.created_by === user?.id ||
-    (user?.managed_room_ids ?? []).includes(booking.room)
+  // Writing is reserved to administrators, so this mirrors the API exactly.
+  const canEdit = (_booking: Booking) => isAdmin
 
   const openCreate = (slot?: { start: Date; end: Date }) => {
     setInitialSlot(slot ?? null)
@@ -231,7 +229,7 @@ export function Bookings() {
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t, i18n.language, user, isAdmin],
+    [t, i18n.language, isAdmin],
   )
 
   return (

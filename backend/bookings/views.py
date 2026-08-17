@@ -9,7 +9,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
-from users.permissions import CanManageBooking
+from users.permissions import PublicReadAdminWrite
 
 from .filters import BookingFilter, BookingSeriesFilter
 from .models import Booking, BookingSeries, BookingStatus, ConflictPolicy
@@ -53,7 +53,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     queryset = Booking.objects.select_related("room", "booked_by", "series").prefetch_related(
         "required_resources"
     )
-    permission_classes = [CanManageBooking]
+    permission_classes = [PublicReadAdminWrite]
     filterset_class = BookingFilter
     search_fields = ("title", "purpose", "booked_by_name", "room__name", "room__code")
     ordering_fields = ("start_datetime", "end_datetime", "created_at", "room__name")
@@ -316,7 +316,7 @@ class BookingSeriesViewSet(viewsets.ModelViewSet):
         .prefetch_related("required_resources")
         .annotate(occurrences_count=Count("occurrences"))
     )
-    permission_classes = [CanManageBooking]
+    permission_classes = [PublicReadAdminWrite]
     filterset_class = BookingSeriesFilter
     search_fields = ("title", "purpose", "booked_by_name", "room__name")
     ordering_fields = ("start_date", "created_at")

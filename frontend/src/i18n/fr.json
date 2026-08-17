@@ -12,7 +12,9 @@
     "employees": "Employés",
     "analytics": "Statistiques",
     "logout": "Déconnexion",
-    "profile": "Mon profil"
+    "profile": "Mon profil",
+    "login": "Connexion",
+    "readOnlyNotice": "Consultation publique. Connectez-vous pour modifier."
   },
   "common": {
     "add": "Ajouter",

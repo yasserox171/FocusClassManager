@@ -1,7 +1,7 @@
 from django.db.models import Count
 from rest_framework import viewsets
 
-from users.permissions import CanManageEmployees, IsAdminOrReadOnly
+from users.permissions import PublicReadAdminWrite
 
 from .models import Department, Employee
 from .serializers import DepartmentSerializer, EmployeeSerializer
@@ -10,7 +10,7 @@ from .serializers import DepartmentSerializer, EmployeeSerializer
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.annotate(employees_count=Count("employees"))
     serializer_class = DepartmentSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [PublicReadAdminWrite]
     search_fields = ("name", "name_ar", "code")
     ordering_fields = ("name", "code")
     pagination_class = None
@@ -23,7 +23,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         "managed_rooms"
     )
     serializer_class = EmployeeSerializer
-    permission_classes = [CanManageEmployees]
+    permission_classes = [PublicReadAdminWrite]
     filterset_fields = ("role", "is_active", "department", "managed_rooms")
     search_fields = ("full_name", "email", "phone")
     ordering_fields = ("full_name", "role", "created_at")

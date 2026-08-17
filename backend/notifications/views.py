@@ -2,8 +2,9 @@ from django.db.models import Q
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
+from users.permissions import PublicReadAdminWrite
 
 from .models import Notification
 from .serializers import AlertSerializer, NotificationSerializer
@@ -13,18 +14,23 @@ from .services import build_alerts
 class NotificationViewSet(
     mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet
 ):
-    """Stored notifications for the signed-in user (plus the broadcast ones)."""
+    """
+    Broadcast notifications are public; the ones addressed to a specific person
+    are only visible to them. Marking as read is an administrator action.
+    """
 
     queryset = Notification.objects.none()  # replaced per request, declared for the schema
     serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [PublicReadAdminWrite]
     filterset_fields = ("category", "level", "is_read")
     ordering_fields = ("created_at", "level")
 
     def get_queryset(self):
-        return Notification.objects.filter(
-            Q(recipient__isnull=True) | Q(recipient=self.request.user)
-        ).select_related("room")
+        user = self.request.user
+        scope = Q(recipient__isnull=True)
+        if user and user.is_authenticated:
+            scope |= Q(recipient=user)
+        return Notification.objects.filter(scope).select_related("room")
 
     @extend_schema(request=None, responses={200: NotificationSerializer})
     @action(detail=True, methods=["post"], url_path="read")
@@ -50,4 +56,7 @@ class NotificationViewSet(
     def alerts(self, request):
         """Live alerts: maintenance, resource issues, reminders and conflicts."""
         hours = int(request.query_params.get("reminder_hours", 24))
-        return Response(build_alerts(user=request.user, reminder_hours=hours))
+        # Anonymous visitors get the full, unfiltered list: build_alerts only
+        # narrows the scope for a signed-in non-admin (their own rooms).
+        user = request.user if request.user.is_authenticated else None
+        return Response(build_alerts(user=user, reminder_hours=hours))

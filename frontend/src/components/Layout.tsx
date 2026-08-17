@@ -4,6 +4,7 @@ import {
   CalendarDays,
   DoorOpen,
   LayoutDashboard,
+  LogIn,
   LogOut,
   Menu,
   Users,
@@ -22,22 +23,52 @@ const NAV_ITEMS = [
   { to: '/', key: 'nav.dashboard', icon: LayoutDashboard, end: true },
   { to: '/bookings', key: 'nav.bookings', icon: CalendarDays, end: false },
   { to: '/rooms', key: 'nav.rooms', icon: DoorOpen, end: false },
-  { to: '/employees', key: 'nav.employees', icon: Users, end: false, adminOnly: true },
+  { to: '/employees', key: 'nav.employees', icon: Users, end: false },
   { to: '/analytics', key: 'nav.analytics', icon: BarChart3, end: false },
 ]
 
 export function Layout() {
   const { t } = useTranslation()
-  const { user, logout, isAdmin } = useAuth()
+  const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin)
+  const visibleItems = NAV_ITEMS
 
   const handleLogout = () => {
     logout()
-    navigate('/login')
+    navigate('/')
   }
+
+  /** Signed in: profile + sign out. Anonymous visitor: a link to sign in. */
+  const accountBox = user ? (
+    <>
+      <div className="mb-2 px-3 py-2">
+        <p className="truncate text-sm font-medium text-slate-800">{user.full_name}</p>
+        <p className="text-xs text-slate-500">{t(`employees.roles.${user.role}`)}</p>
+      </div>
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-red-50 hover:text-red-700"
+      >
+        <LogOut size={18} />
+        {t('nav.logout')}
+      </button>
+    </>
+  ) : (
+    <>
+      <p className="mb-2 px-3 text-xs text-slate-500">{t('nav.readOnlyNotice')}</p>
+      <NavLink
+        to="/login"
+        onClick={() => setMobileOpen(false)}
+        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-brand-50 hover:text-brand-700"
+      >
+        <LogIn size={18} />
+        {t('nav.login')}
+      </NavLink>
+    </>
+  )
 
   const navigation = (
     <nav className="flex flex-1 flex-col gap-1 p-3">
@@ -77,20 +108,7 @@ export function Layout() {
           </div>
         </div>
         {navigation}
-        <div className="border-t border-slate-100 p-3">
-          <div className="mb-2 px-3 py-2">
-            <p className="truncate text-sm font-medium text-slate-800">{user?.full_name}</p>
-            <p className="text-xs text-slate-500">{t(`employees.roles.${user?.role ?? 'staff'}`)}</p>
-          </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-red-50 hover:text-red-700"
-          >
-            <LogOut size={18} />
-            {t('nav.logout')}
-          </button>
-        </div>
+        <div className="border-t border-slate-100 p-3">{accountBox}</div>
       </aside>
 
       {/* Sidebar - mobile */}
@@ -109,16 +127,7 @@ export function Layout() {
               </button>
             </div>
             {navigation}
-            <div className="border-t border-slate-100 p-3">
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-red-50 hover:text-red-700"
-              >
-                <LogOut size={18} />
-                {t('nav.logout')}
-              </button>
-            </div>
+            <div className="border-t border-slate-100 p-3">{accountBox}</div>
           </aside>
         </div>
       )}

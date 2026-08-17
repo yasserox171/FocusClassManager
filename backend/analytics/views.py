@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -49,7 +49,7 @@ def _date_range(request, default_days: int = 30):
 class DashboardSummaryView(APIView):
     """Headline numbers of the dashboard."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     @extend_schema(responses={200: dict})
     def get(self, request):
@@ -103,7 +103,7 @@ class DashboardSummaryView(APIView):
 class RoomUsageView(APIView):
     """Occupancy rate and booked hours for every room over a period."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     @extend_schema(
         parameters=[
@@ -178,7 +178,7 @@ class RoomUsageView(APIView):
 class RoomStatsView(APIView):
     """Detailed statistics of a single room (peak hours, weekday split)."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     @extend_schema(responses={200: dict})
     def get(self, request, room_id: int):
@@ -190,7 +190,7 @@ class RoomStatsView(APIView):
 class TimelineView(APIView):
     """Bookings per month over the last N months."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     @extend_schema(
         parameters=[OpenApiParameter("months", int, description="How many months back, default 12")],
@@ -233,7 +233,7 @@ class TimelineView(APIView):
 class PeakHoursView(APIView):
     """Aggregated peak hours across every room."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     @extend_schema(responses={200: dict})
     def get(self, request):
@@ -245,7 +245,7 @@ class PeakHoursView(APIView):
 class ResourceUsageView(APIView):
     """Which resources are requested the most."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     @extend_schema(responses={200: dict})
     def get(self, request):

@@ -163,8 +163,13 @@ Le serveur de développement Vite relaie `/api` vers `http://localhost:8000`
   et des réservations ponctuelles réparties autour de la date du jour,
 - des incidents matériels ouverts pour alimenter les alertes.
 
-Connexion administrateur : **`admin` / `Focus@2025`**
-(`--password` pour choisir un autre mot de passe, `--flush` pour repartir de zéro).
+`seed_demo` crée aussi les comptes de démonstration (`admin` / `Focus@2025` par défaut,
+`--password` pour en choisir un autre, `--flush` pour repartir de zéro).
+
+> **Déploiement réel :** la consultation étant publique, un seul compte administrateur
+> est nécessaire. Créez-le avec `createsuperuser` et n'exécutez pas `seed_demo`, ou
+> supprimez ensuite les comptes de démonstration — les salles, réservations et employés
+> sont conservés, les clés étrangères vers un compte supprimé passent à `NULL`.
 
 ---
 
@@ -288,15 +293,21 @@ Règles appliquées :
 
 ## Rôles et permissions
 
-| Rôle | Salles | Employés | Réservations | Statistiques |
-| --- | --- | --- | --- | --- |
-| **Administrateur** | Tout | Tout | Tout, suppression définitive | Tout |
-| **Chef de département** | Lecture | Lecture | Créer, modifier les siennes | Tout |
-| **Responsable de salle** | Lecture + incidents | — | Créer, modifier celles de ses salles | Tout |
-| **Personnel administratif** | Lecture | — | Créer, modifier les siennes | Tout |
+Les données du centre sont **publiques en lecture seule**. N'importe quel visiteur
+consulte les salles, les réservations, l'annuaire et les statistiques **sans compte** ;
+seul un **administrateur** peut créer, modifier ou supprimer quoi que ce soit.
 
-Une réservation ne peut être modifiée que par un administrateur, son auteur, ou le
-responsable de la salle concernée.
+| | Visiteur (sans compte) | Administrateur |
+| --- | --- | --- |
+| Salles, ressources, incidents | Lecture | Tout |
+| Réservations et séries | Lecture | Tout, suppression définitive |
+| Employés et départements | Lecture | Tout |
+| Statistiques et alertes | Lecture | Tout |
+| Comptes utilisateurs (`/api/users/`) | — | Tout |
+
+Une seule classe de permission gouverne l'ensemble : `users.permissions.PublicReadAdminWrite`
+(lecture pour tous, écriture réservée à `user.is_admin`). Les comptes utilisateurs
+restent privés et ne sont jamais exposés aux visiteurs.
 
 ---
 
@@ -355,6 +366,9 @@ Toutes les variables sont documentées dans [`.env.example`](.env.example).
 - **الإحصائيات**: نسبة استخدام كل قاعة، أوقات الذروة، الحجوزات عبر الزمن،
   والموارد الأكثر طلباً.
 - **الواجهة** ثنائية اللغة عربية/فرنسية مع دعم كامل لاتجاه الكتابة من اليمين إلى اليسار.
+
+**الصلاحيات**: الاطلاع على البيانات متاح للجميع بدون حساب (القاعات، الحجوزات،
+الموظفون، الإحصائيات)، أما الإضافة والتعديل والحذف فمحصورة في **المدير** وحده.
 
 للتشغيل السريع: `docker compose up --build` ثم `python manage.py seed_demo`
 لإنشاء بيانات تجريبية، والدخول بـ `admin` / `Focus@2025`.

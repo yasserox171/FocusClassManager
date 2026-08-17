@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Route, Routes } from 'react-router-dom'
 import type { ReactElement } from 'react'
 
 import { Layout } from '@/components/Layout'
@@ -12,9 +12,14 @@ import { Employees } from '@/pages/Employees'
 import { Login } from '@/pages/Login'
 import { Rooms } from '@/pages/Rooms'
 
-function RequireAuth({ children, adminOnly = false }: { children: ReactElement; adminOnly?: boolean }) {
-  const { user, loading, isAdmin } = useAuth()
-  const location = useLocation()
+/**
+ * The centre's data is public in read-only, so no route requires an account.
+ * We still wait for the session bootstrap to settle before rendering, otherwise
+ * an administrator would see the page flash without its action buttons while
+ * the stored token is being verified.
+ */
+function AppShell({ children }: { children: ReactElement }) {
+  const { loading } = useAuth()
 
   if (loading) {
     return (
@@ -22,12 +27,6 @@ function RequireAuth({ children, adminOnly = false }: { children: ReactElement; 
         <Spinner />
       </div>
     )
-  }
-  if (!user) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />
-  }
-  if (adminOnly && !isAdmin) {
-    return <Navigate to="/" replace />
   }
   return children
 }
@@ -51,22 +50,15 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route
         element={
-          <RequireAuth>
+          <AppShell>
             <Layout />
-          </RequireAuth>
+          </AppShell>
         }
       >
         <Route path="/" element={<Dashboard />} />
         <Route path="/bookings" element={<Bookings />} />
         <Route path="/rooms" element={<Rooms />} />
-        <Route
-          path="/employees"
-          element={
-            <RequireAuth adminOnly>
-              <Employees />
-            </RequireAuth>
-          }
-        />
+        <Route path="/employees" element={<Employees />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="*" element={<NotFound />} />
       </Route>
