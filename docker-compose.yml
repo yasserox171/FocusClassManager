@@ -58,6 +58,10 @@ services:
     container_name: faas-frontend
     depends_on:
       - backend
+    volumes:
+      # Page de telechargement de l'application mobile + le fichier APK.
+      # Monte en lecture seule : deposer un nouvel APK ne demande pas de rebuild.
+      - ./downloads:/usr/share/nginx/html/download:ro
     ports:
       - '${FRONTEND_PORT:-8080}:80'
     restart: unless-stopped

@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Focus Salles — Application mobile</title>
+<meta name="description" content="Telecharger l'application mobile de gestion des salles du Centre Focus Safi.">
+<style>
+  :root{
+    --brand:#2563eb; --brand-dark:#1d4ed8; --brand-soft:#eff6ff;
+    --bg:#f1f5f9; --surface:#fff; --border:#e2e8f0;
+    --text:#0f172a; --muted:#64748b; --faint:#94a3b8;
+    --warn:#d97706; --warn-soft:#fef3c7; --radius:14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0b1220; --surface:#131c2e; --border:#243047;
+      --text:#e8eefc; --muted:#9aa8c2; --faint:#6d7d99;
+      --brand-soft:#16233d; --warn-soft:#332409;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Arabic",sans-serif;
+    line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:28px 20px 64px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:36px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:44px;height:44px;border-radius:12px;background:var(--brand);color:#fff;
+    display:grid;place-items:center;font-weight:800;font-size:22px;flex:none}
+  .brand b{display:block;font-size:15px}
+  .brand span{display:block;font-size:12px;color:var(--muted)}
+  #lang{border:1px solid var(--border);background:var(--surface);color:var(--text);
+    border-radius:999px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer}
+  #lang:hover{border-color:var(--brand);color:var(--brand)}
+  h1{font-size:clamp(26px,5vw,36px);line-height:1.2;margin:0 0 10px;letter-spacing:-.02em}
+  .lede{color:var(--muted);font-size:16px;margin:0 0 28px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:24px;margin-bottom:18px}
+  .dl{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .dl-icon{width:52px;height:52px;border-radius:13px;background:var(--brand-soft);
+    display:grid;place-items:center;flex:none}
+  .dl-icon svg{width:27px;height:27px;stroke:var(--brand)}
+  .dl-meta{flex:1 1 190px;min-width:0}
+  .dl-meta b{display:block;font-size:16px}
+  .dl-meta span{display:block;font-size:13px;color:var(--muted)}
+  .btn{display:inline-flex;align-items:center;gap:9px;background:var(--brand);color:#fff;
+    text-decoration:none;font-weight:700;font-size:15px;padding:13px 26px;border-radius:10px;
+    border:0;cursor:pointer;transition:background .15s}
+  .btn:hover{background:var(--brand-dark)}
+  .btn[aria-disabled="true"]{background:var(--border);color:var(--faint);cursor:not-allowed}
+  .btn svg{width:18px;height:18px;stroke:currentColor}
+  .pill{display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700;
+    background:var(--warn-soft);color:var(--warn)}
+  h2{font-size:16px;margin:0 0 14px;letter-spacing:-.01em}
+  ol{margin:0;padding-inline-start:22px;color:var(--muted);font-size:14.5px}
+  li{margin-bottom:8px}
+  .note{font-size:13.5px;color:var(--muted);margin:12px 0 0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+  .feat{background:var(--bg);border-radius:11px;padding:14px 16px}
+  .feat b{display:block;font-size:14px;margin-bottom:2px}
+  .feat span{font-size:12.5px;color:var(--muted)}
+  footer{text-align:center;color:var(--faint);font-size:13px;margin-top:36px}
+  footer a{color:var(--brand);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo">F</div>
+      <div><b data-t="brand">Focus Salles</b><span data-t="center">Centre Focus</span></div>
+    </div>
+    <button id="lang" type="button">العربية</button>
+  </header>
+
+  <h1 data-t="title">L'application mobile de gestion des salles</h1>
+  <p class="lede" data-t="lede">Consultez les salles, les reservations et les statistiques depuis votre telephone.</p>
+
+  <div class="card">
+    <div class="dl">
+      <div class="dl-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v12"/><path d="m7 12 5 5 5-5"/><path d="M5 21h14"/></svg>
+      </div>
+      <div class="dl-meta">
+        <b data-t="androidLabel">Android</b>
+        <span id="apk-meta" data-t="checking">Verification...</span>
+      </div>
+      <a class="btn" id="apk-btn" href="focus-salles.apk" aria-disabled="true" download>
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v12"/><path d="m7 12 5 5 5-5"/><path d="M5 21h14"/></svg>
+        <span data-t="download">Telecharger</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 data-t="howto">Installation sur Android</h2>
+    <ol>
+      <li data-t="s1"></li><li data-t="s2"></li><li data-t="s3"></li><li data-t="s4"></li>
+    </ol>
+    <p class="note" data-t="note"></p>
+  </div>
+
+  <div class="card">
+    <h2 data-t="iosTitle">iPhone et iPad</h2>
+    <p style="margin:0;color:var(--muted);font-size:14.5px" data-t="iosBody"></p>
+  </div>
+
+  <div class="card">
+    <h2 data-t="inside">Dans l'application</h2>
+    <div class="grid">
+      <div class="feat"><b data-t="f1t"></b><span data-t="f1d"></span></div>
+      <div class="feat"><b data-t="f2t"></b><span data-t="f2d"></span></div>
+      <div class="feat"><b data-t="f3t"></b><span data-t="f3d"></span></div>
+      <div class="feat"><b data-t="f4t"></b><span data-t="f4d"></span></div>
+      <div class="feat"><b data-t="f5t"></b><span data-t="f5d"></span></div>
+      <div class="feat"><b data-t="f6t"></b><span data-t="f6d"></span></div>
+    </div>
+  </div>
+
+  <footer><a href="/" data-t="backToWeb">Ouvrir l'application web</a></footer>
+</div>
+
+<script>
+var I18N = {
+  fr: {
+    brand:"Focus Salles", center:"Centre Focus — Safi",
+    title:"L'application mobile de gestion des salles",
+    lede:"Consultez les salles, les reservations et les statistiques du centre depuis votre telephone. Aucun compte n'est necessaire pour consulter les donnees.",
+    androidLabel:"Android — fichier APK",
+    download:"Telecharger", checking:"Verification de la disponibilite...",
+    unavailable:"Bientot disponible", ready:"Version 1.0.0 · {s}",
+    howto:"Installation sur Android",
+    s1:"Telechargez le fichier APK avec le bouton ci-dessus.",
+    s2:"Ouvrez le fichier telecharge. Android demandera l'autorisation d'installer des applications de cette source.",
+    s3:"Acceptez l'autorisation, revenez en arriere, puis appuyez sur Installer.",
+    s4:"Ouvrez Focus Salles. L'application se connecte automatiquement au serveur du centre.",
+    note:"L'avertissement d'Android est normal : il apparait pour toute application installee en dehors du Play Store.",
+    iosTitle:"iPhone et iPad",
+    iosBody:"La version iOS n'est pas encore disponible. En attendant, l'application web fonctionne dans Safari et peut etre ajoutee a l'ecran d'accueil avec Partager puis Sur l'ecran d'accueil.",
+    inside:"Dans l'application",
+    f1t:"Tableau de bord", f1d:"Salles disponibles, reservations du jour, alertes",
+    f2t:"Reservations",    f2d:"A venir, historique, seances recurrentes",
+    f3t:"Salles",          f3d:"Capacite, etat et inventaire des ressources",
+    f4t:"Statistiques",    f4d:"Taux d'occupation, heures de pointe",
+    f5t:"Bilingue",        f5d:"Arabe et francais, sens de lecture adapte",
+    f6t:"Sans compte",     f6d:"La consultation est ouverte a tous",
+    backToWeb:"Ouvrir l'application web", sw:"العربية"
+  },
+  ar: {
+    brand:"قاعات فوكس", center:"مركز فوكس — آسفي",
+    title:"تطبيق الهاتف لتدبير القاعات",
+    lede:"اطّلع على القاعات والحجوزات وإحصائيات المركز من هاتفك. الاطلاع على البيانات لا يتطلب أي حساب.",
+    androidLabel:"أندرويد — ملف APK",
+    download:"تحميل", checking:"جارٍ التحقق من التوفر...",
+    unavailable:"متاح قريباً", ready:"الإصدار 1.0.0 · {s}",
+    howto:"التثبيت على أندرويد",
+    s1:"حمّل ملف APK بالزر أعلاه.",
+    s2:"افتح الملف بعد تحميله. سيطلب أندرويد الإذن بتثبيت التطبيقات من هذا المصدر.",
+    s3:"اقبل الإذن، ثم ارجع واضغط على تثبيت.",
+    s4:"افتح تطبيق قاعات فوكس. يتصل التطبيق تلقائياً بخادم المركز.",
+    note:"تحذير أندرويد أمر عادي: يظهر مع كل تطبيق يُثبّت من خارج متجر Play.",
+    iosTitle:"آيفون وآيباد",
+    iosBody:"نسخة iOS غير متاحة بعد. في انتظار ذلك، يعمل تطبيق الويب في Safari ويمكن إضافته إلى الشاشة الرئيسية عبر مشاركة ثم إضافة إلى الشاشة الرئيسية.",
+    inside:"داخل التطبيق",
+    f1t:"لوحة القيادة", f1d:"القاعات المتاحة، حجوزات اليوم، التنبيهات",
+    f2t:"الحجوزات",     f2d:"القادمة، السجل، الحصص المتكررة",
+    f3t:"القاعات",      f3d:"السعة والحالة وجرد الموارد",
+    f4t:"الإحصائيات",   f4d:"نسب الاستخدام وأوقات الذروة",
+    f5t:"ثنائي اللغة",  f5d:"العربية والفرنسية مع اتجاه القراءة المناسب",
+    f6t:"بدون حساب",    f6d:"الاطلاع متاح للجميع",
+    backToWeb:"فتح تطبيق الويب", sw:"Francais"
+  }
+};
+
+var APK = 'focus-salles.apk';
+var lang = (navigator.language || 'fr').indexOf('ar') === 0 ? 'ar' : 'fr';
+var apkState = null;
+
+function human(b){
+  if (!b || isNaN(b)) return '';
+  var mb = b / 1048576;
+  return mb >= 1 ? mb.toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB';
+}
+
+function render(){
+  var t = I18N[lang];
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  document.getElementById('lang').textContent = t.sw;
+
+  var nodes = document.querySelectorAll('[data-t]');
+  for (var i = 0; i < nodes.length; i++) {
+    var k = nodes[i].getAttribute('data-t');
+    if (t[k] !== undefined) nodes[i].textContent = t[k];
+  }
+
+  var meta = document.getElementById('apk-meta');
+  var btn = document.getElementById('apk-btn');
+  if (apkState === null) {
+    meta.textContent = t.checking;
+    btn.setAttribute('aria-disabled', 'true');
+  } else if (apkState.available) {
+    meta.textContent = t.ready.replace('{s}', human(apkState.size));
+    btn.removeAttribute('aria-disabled');
+  } else {
+    meta.textContent = '';
+    var pill = document.createElement('span');
+    pill.className = 'pill';
+    pill.textContent = t.unavailable;
+    meta.appendChild(pill);
+    btn.setAttribute('aria-disabled', 'true');
+  }
+}
+
+/* The button only goes live once the file really exists on the server, so this
+   page can ship before the build does without ever offering a broken download. */
+function probe(){
+  fetch(APK, { method: 'HEAD', cache: 'no-store' })
+    .then(function(r){
+      apkState = r.ok ? { available: true, size: Number(r.headers.get('content-length')) }
+                      : { available: false };
+      render();
+    })
+    .catch(function(){ apkState = { available: false }; render(); });
+}
+
+document.getElementById('lang').addEventListener('click', function(){
+  lang = lang === 'ar' ? 'fr' : 'ar'; render();
+});
+document.getElementById('apk-btn').addEventListener('click', function(e){
+  if (e.currentTarget.getAttribute('aria-disabled') === 'true') e.preventDefault();
+});
+
+render(); probe();
+</script>
+</body>
+</html>
