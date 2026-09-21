@@ -44,7 +44,12 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # Le paquet legacy "tools" n'existe plus dans le depot SDK de Google
+      # (retire depuis des annees) ; ne demander que platform-tools evite
+      # l'echec "Failed to find package 'tools'" de sdkmanager.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       # Versions imposees par React Native 0.86. Les installer explicitement
       # evite que Gradle les telecharge au milieu de la compilation.
