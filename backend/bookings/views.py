@@ -7,6 +7,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from users.permissions import PublicReadAdminWrite
@@ -173,8 +174,13 @@ class BookingViewSet(viewsets.ModelViewSet):
         responses={200: dict},
         description="Dry run of a recurrence: returns every generated slot and its conflicts.",
     )
-    @action(detail=False, methods=["post"], url_path="preview")
+    @action(detail=False, methods=["post"], url_path="preview", permission_classes=[AllowAny])
     def preview(self, request):
+        """
+        Dry run only - never writes to the database, so it is opened to
+        anonymous visitors: they can check whether a room is free (including
+        recurring patterns) before calling the centre to book it.
+        """
         serializer = BookingPreviewSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data

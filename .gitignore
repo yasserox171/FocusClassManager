@@ -35,3 +35,6 @@ Thumbs.db
 .coverage
 htmlcov/
 coverage/
+
+# APK publie : binaire volumineux, distribue par le site et non versionne
+downloads/*.apk

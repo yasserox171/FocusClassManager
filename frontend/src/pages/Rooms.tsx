@@ -33,7 +33,7 @@ const STATUS_TONES: Record<RoomStatus, 'green' | 'amber' | 'red'> = {
 export function Rooms() {
   const { t, i18n } = useTranslation()
   const toast = useToast()
-  const { isAdmin, canManageRoom } = useAuth()
+  const { isAdmin } = useAuth()
   const isArabic = i18n.language.startsWith('ar')
 
   const [search, setSearch] = useState('')
@@ -167,7 +167,7 @@ export function Rooms() {
         header: t('common.actions'),
         cell: ({ row }) => (
           <div className="flex items-center gap-1">
-            {(isAdmin || canManageRoom(row.original.id)) && (
+            {isAdmin && (
               <button
                 type="button"
                 onClick={() => setIssueRoom(row.original)}

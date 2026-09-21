@@ -69,11 +69,35 @@ class ExpandRecurrenceTests(TestCase):
             start_time=time(14, 0),
             end_time=time(16, 0),
             monthly_mode=MonthlyMode.DAY_OF_MONTH,
-            month_day=15,
+            month_days=[15],
         )
         days = [timezone.localtime(start).date() for start, _ in windows]
         self.assertEqual(
             days, [date(2025, 1, 15), date(2025, 2, 15), date(2025, 3, 15), date(2025, 4, 15)]
+        )
+
+    def test_monthly_by_several_days_of_month(self):
+        """5th AND 20th of each month, in one series."""
+        windows = expand_recurrence(
+            recurrence_type=RecurrenceType.MONTHLY,
+            start_date=date(2025, 1, 5),
+            end_date=date(2025, 3, 31),
+            start_time=time(14, 0),
+            end_time=time(16, 0),
+            monthly_mode=MonthlyMode.DAY_OF_MONTH,
+            month_days=[5, 20],
+        )
+        days = [timezone.localtime(start).date() for start, _ in windows]
+        self.assertEqual(
+            days,
+            [
+                date(2025, 1, 5),
+                date(2025, 1, 20),
+                date(2025, 2, 5),
+                date(2025, 2, 20),
+                date(2025, 3, 5),
+                date(2025, 3, 20),
+            ],
         )
 
     def test_monthly_nth_weekday(self):
@@ -91,6 +115,23 @@ class ExpandRecurrenceTests(TestCase):
         days = [timezone.localtime(start).date() for start, _ in windows]
         self.assertEqual(days, [date(2025, 1, 6), date(2025, 2, 3), date(2025, 3, 3)])
 
+    def test_monthly_nth_weekday_several_days(self):
+        """First Monday AND first Wednesday of each month, in one series."""
+        windows = expand_recurrence(
+            recurrence_type=RecurrenceType.MONTHLY,
+            start_date=date(2025, 1, 1),
+            end_date=date(2025, 2, 28),
+            start_time=time(9, 0),
+            end_time=time(11, 0),
+            monthly_mode=MonthlyMode.NTH_WEEKDAY,
+            weekdays=[0, 2],
+            nth_week=1,
+        )
+        days = [timezone.localtime(start).date() for start, _ in windows]
+        self.assertEqual(
+            days, [date(2025, 1, 1), date(2025, 1, 6), date(2025, 2, 3), date(2025, 2, 5)]
+        )
+
     def test_yearly(self):
         windows = expand_recurrence(
             recurrence_type=RecurrenceType.YEARLY,
@@ -101,6 +142,22 @@ class ExpandRecurrenceTests(TestCase):
         )
         days = [timezone.localtime(start).date() for start, _ in windows]
         self.assertEqual(days, [date(2025, 9, 1), date(2026, 9, 1), date(2027, 9, 1), date(2028, 9, 1)])
+
+    def test_yearly_several_dates(self):
+        """15 January AND 1 September every year, in one series."""
+        windows = expand_recurrence(
+            recurrence_type=RecurrenceType.YEARLY,
+            start_date=date(2025, 1, 1),
+            end_date=date(2026, 12, 31),
+            start_time=time(8, 0),
+            end_time=time(12, 0),
+            yearly_dates=[{"month": 1, "day": 15}, {"month": 9, "day": 1}],
+        )
+        days = [timezone.localtime(start).date() for start, _ in windows]
+        self.assertEqual(
+            days,
+            [date(2025, 1, 15), date(2025, 9, 1), date(2026, 1, 15), date(2026, 9, 1)],
+        )
 
     def test_overnight_window_ends_next_day(self):
         start, end = occurrence_window(date(2025, 1, 1), time(22, 0), time(1, 0))

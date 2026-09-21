@@ -1,12 +1,13 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { addDays, startOfMonth, subDays } from 'date-fns'
-import { CalendarDays, List, Plus, Repeat, Trash2 } from 'lucide-react'
+import { CalendarDays, CalendarSearch, List, Plus, Repeat, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import type { View } from 'react-big-calendar'
 import { Views } from 'react-big-calendar'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 
+import { AvailabilityChecker } from '@/components/AvailabilityChecker'
 import { BookingCalendar } from '@/components/BookingCalendar'
 import { BookingForm } from '@/components/BookingForm'
 import { DataTable } from '@/components/DataTable'
@@ -51,7 +52,8 @@ export function Bookings() {
   const [periodFilter, setPeriodFilter] = useState('')
   const [page, setPage] = useState(1)
 
-  const [formOpen, setFormOpen] = useState(searchParams.get('new') === '1')
+  const [formOpen, setFormOpen] = useState(isAdmin && searchParams.get('new') === '1')
+  const [checkerOpen, setCheckerOpen] = useState(false)
   const [initialSlot, setInitialSlot] = useState<{ start: Date; end: Date } | null>(null)
   const [selected, setSelected] = useState<Booking | null>(null)
   const [deleting, setDeleting] = useState<Booking | null>(null)
@@ -120,6 +122,10 @@ export function Bookings() {
   const canEdit = (_booking: Booking) => isAdmin
 
   const openCreate = (slot?: { start: Date; end: Date }) => {
+    if (!isAdmin) {
+      setCheckerOpen(true)
+      return
+    }
     setInitialSlot(slot ?? null)
     setFormOpen(true)
   }
@@ -261,9 +267,15 @@ export function Bookings() {
                 {t('bookings.listView')}
               </button>
             </div>
-            <Button icon={<Plus size={16} />} onClick={() => openCreate()}>
-              {t('bookings.newBooking')}
-            </Button>
+            {isAdmin ? (
+              <Button icon={<Plus size={16} />} onClick={() => openCreate()}>
+                {t('bookings.newBooking')}
+              </Button>
+            ) : (
+              <Button icon={<CalendarSearch size={16} />} onClick={() => setCheckerOpen(true)}>
+                {t('bookings.previewButton')}
+              </Button>
+            )}
           </div>
         }
       />
@@ -385,6 +397,20 @@ export function Bookings() {
             }}
             onCancel={() => setFormOpen(false)}
           />
+        ) : (
+          <Spinner />
+        )}
+      </Modal>
+
+      {/* Availability check (public visitors) */}
+      <Modal
+        open={checkerOpen}
+        title={t('bookings.checkAvailabilityTitle')}
+        size="lg"
+        onClose={() => setCheckerOpen(false)}
+      >
+        {rooms.data ? (
+          <AvailabilityChecker rooms={rooms.data} onClose={() => setCheckerOpen(false)} />
         ) : (
           <Spinner />
         )}

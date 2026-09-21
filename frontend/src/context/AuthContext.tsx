@@ -3,18 +3,14 @@ import type { ReactNode } from 'react'
 
 import { SESSION_EXPIRED_EVENT, tokenStorage } from '@/services/api'
 import { authService } from '@/services/authService'
-import type { Role, User } from '@/types'
+import type { User } from '@/types'
 
 interface AuthContextValue {
   user: User | null
   loading: boolean
   login: (username: string, password: string) => Promise<void>
   logout: () => void
-  hasRole: (...roles: Role[]) => boolean
   isAdmin: boolean
-  canManageRooms: boolean
-  canManageEmployees: boolean
-  canManageRoom: (roomId: number) => boolean
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -64,19 +60,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<AuthContextValue>(() => {
-    const hasRole = (...roles: Role[]) => (user ? roles.includes(user.role) : false)
     const isAdmin = user?.role === 'admin'
     return {
       user,
       loading,
       login,
       logout,
-      hasRole,
       isAdmin,
-      canManageRooms: isAdmin,
-      canManageEmployees: isAdmin,
-      canManageRoom: (roomId: number) =>
-        isAdmin || (user?.managed_room_ids ?? []).includes(roomId),
     }
   }, [user, loading, login, logout])
 

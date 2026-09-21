@@ -5,10 +5,8 @@ import type { ReactElement } from 'react'
 import { Layout } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
-import { Analytics } from '@/pages/Analytics'
 import { Bookings } from '@/pages/Bookings'
 import { Dashboard } from '@/pages/Dashboard'
-import { Employees } from '@/pages/Employees'
 import { Login } from '@/pages/Login'
 import { Rooms } from '@/pages/Rooms'
 
@@ -58,8 +56,6 @@ export default function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/bookings" element={<Bookings />} />
         <Route path="/rooms" element={<Rooms />} />
-        <Route path="/employees" element={<Employees />} />
-        <Route path="/analytics" element={<Analytics />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

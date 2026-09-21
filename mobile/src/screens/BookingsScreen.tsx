@@ -4,6 +4,7 @@ import { Alert as RNAlert, FlatList, Pressable, RefreshControl, StyleSheet, Text
 
 import { parseApiError } from '../api/client'
 import { bookingApi } from '../api/services'
+import { AvailabilityChecker } from '../components/AvailabilityChecker'
 import { Badge, Button, Card, EmptyState, ErrorState, Loading, Subtitle, Title } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { colors, radius, spacing } from '../theme'
@@ -25,6 +26,7 @@ export function BookingsScreen() {
   const { row, text, language } = useDirection()
   const { isAdmin } = useAuth()
   const [period, setPeriod] = useState<Period>('upcoming')
+  const [checkerOpen, setCheckerOpen] = useState(false)
 
   const { data, loading, error, refreshing, refresh, reload } = useAsync(
     () =>
@@ -61,6 +63,10 @@ export function BookingsScreen() {
       <View style={styles.header}>
         <Title>{t('bookings.title')}</Title>
         <Subtitle>{t('bookings.subtitle')}</Subtitle>
+
+        <View style={styles.checkButton}>
+          <Button label={t('bookings.previewButton')} onPress={() => setCheckerOpen(true)} />
+        </View>
 
         <View style={[styles.tabs, row]}>
           {periods.map((value) => {
@@ -129,6 +135,8 @@ export function BookingsScreen() {
           )}
         />
       )}
+
+      <AvailabilityChecker visible={checkerOpen} onClose={() => setCheckerOpen(false)} />
     </View>
   )
 }
@@ -136,6 +144,7 @@ export function BookingsScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.bg },
   header: { padding: spacing.lg, paddingBottom: spacing.md, gap: spacing.xs },
+  checkButton: { marginTop: spacing.md },
   tabs: { gap: spacing.sm, marginTop: spacing.md },
   tab: {
     paddingHorizontal: spacing.lg,

@@ -151,8 +151,9 @@ export interface BookingSeries {
   weekdays: number[]
   weekday_names: string[]
   monthly_mode: MonthlyMode
-  month_day: number | null
+  month_days: number[]
   nth_week: number | null
+  yearly_dates: YearlyDate[]
   start_date: string
   end_date: string
   start_time: string
@@ -162,6 +163,11 @@ export interface BookingSeries {
   status: BookingStatus
   occurrences_count: number
   created_at: string
+}
+
+export interface YearlyDate {
+  month: number
+  day: number
 }
 
 export interface BookingPayload {
@@ -177,8 +183,9 @@ export interface BookingPayload {
   interval?: number
   weekdays?: number[]
   monthly_mode?: MonthlyMode
-  month_day?: number | null
+  month_days?: number[]
   nth_week?: number | null
+  yearly_dates?: YearlyDate[]
   start_date: string
   end_date?: string | null
   start_time: string

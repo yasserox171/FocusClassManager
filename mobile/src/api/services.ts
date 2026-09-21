@@ -2,6 +2,8 @@ import { api, query } from './client'
 import type {
   Alert,
   Booking,
+  BookingPayload,
+  BookingPreview,
   DashboardSummary,
   Department,
   Employee,
@@ -80,6 +82,14 @@ export const bookingApi = {
   /** Cancels by default; `scope` handles a recurring series. */
   async cancel(id: number, scope: 'occurrence' | 'future' | 'series' = 'occurrence') {
     await api.delete(`/bookings/${id}/${query({ scope })}`)
+  },
+  /**
+   * Dry run of a recurrence - open to guests. Lets a visitor check whether a
+   * room is free (one-off, weekly, monthly or yearly) before writing nothing.
+   */
+  async preview(payload: Partial<BookingPayload>) {
+    const { data } = await api.post<BookingPreview>('/bookings/preview/', payload)
+    return data
   },
 }
 

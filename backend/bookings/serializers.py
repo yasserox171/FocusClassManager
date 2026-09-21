@@ -45,6 +45,13 @@ class WeekdayListField(serializers.ListField):
         return list(value or [])
 
 
+class YearlyDateField(serializers.Serializer):
+    """One {month, day} pair of a yearly recurrence - several are allowed per series."""
+
+    month = serializers.IntegerField(min_value=1, max_value=12)
+    day = serializers.IntegerField(min_value=1, max_value=31)
+
+
 class BookingRoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Room
@@ -121,8 +128,9 @@ class BookingSeriesSerializer(serializers.ModelSerializer):
             "weekdays",
             "weekday_names",
             "monthly_mode",
-            "month_day",
+            "month_days",
             "nth_week",
+            "yearly_dates",
             "start_date",
             "end_date",
             "start_time",
@@ -147,8 +155,11 @@ class RecurrenceMixin(serializers.Serializer):
     monthly_mode = serializers.ChoiceField(
         choices=MonthlyMode.choices, default=MonthlyMode.DAY_OF_MONTH
     )
-    month_day = serializers.IntegerField(min_value=1, max_value=31, required=False, allow_null=True)
+    month_days = serializers.ListField(
+        child=serializers.IntegerField(min_value=1, max_value=31), required=False, default=list
+    )
     nth_week = serializers.IntegerField(min_value=-1, max_value=5, required=False, allow_null=True)
+    yearly_dates = YearlyDateField(many=True, required=False, default=list)
 
     start_date = serializers.DateField()
     end_date = serializers.DateField(required=False, allow_null=True)
@@ -177,14 +188,20 @@ class RecurrenceMixin(serializers.Serializer):
         if recurrence_type == RecurrenceType.WEEKLY and not attrs.get("weekdays"):
             attrs["weekdays"] = [start_date.weekday()]
 
-        if (
-            recurrence_type == RecurrenceType.MONTHLY
-            and attrs.get("monthly_mode") == MonthlyMode.NTH_WEEKDAY
-            and not attrs.get("nth_week")
-        ):
-            raise serializers.ValidationError(
-                {"nth_week": "Précisez le rang de la semaine (1 à 5, ou -1 pour la dernière)."}
-            )
+        if recurrence_type == RecurrenceType.MONTHLY:
+            if attrs.get("monthly_mode") == MonthlyMode.NTH_WEEKDAY:
+                if not attrs.get("nth_week"):
+                    raise serializers.ValidationError(
+                        {"nth_week": "Précisez le rang de la semaine (1 à 5, ou -1 pour la dernière)."}
+                    )
+                if not attrs.get("weekdays"):
+                    attrs["weekdays"] = [start_date.weekday()]
+            elif not attrs.get("month_days"):
+                attrs["month_days"] = [start_date.day]
+
+        if recurrence_type == RecurrenceType.YEARLY and not attrs.get("yearly_dates"):
+            attrs["yearly_dates"] = [{"month": start_date.month, "day": start_date.day}]
+
         return attrs
 
     def recurrence_kwargs(self, attrs) -> dict:
@@ -197,8 +214,9 @@ class RecurrenceMixin(serializers.Serializer):
             "interval": attrs.get("interval", 1),
             "weekdays": attrs.get("weekdays") or [],
             "monthly_mode": attrs.get("monthly_mode", MonthlyMode.DAY_OF_MONTH),
-            "month_day": attrs.get("month_day"),
+            "month_days": attrs.get("month_days") or [],
             "nth_week": attrs.get("nth_week"),
+            "yearly_dates": attrs.get("yearly_dates") or [],
         }
 
 

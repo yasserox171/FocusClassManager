@@ -93,12 +93,23 @@ class BookingSeries(TimeStampedModel):
         choices=MonthlyMode.choices,
         default=MonthlyMode.DAY_OF_MONTH,
     )
-    month_day = models.PositiveSmallIntegerField(_("day of month"), null=True, blank=True)
+    month_days = models.JSONField(
+        _("days of month"),
+        default=list,
+        blank=True,
+        help_text=_("Monthly 'day of month' mode: which day numbers (1-31), several allowed."),
+    )
     nth_week = models.SmallIntegerField(
         _("nth week"),
         null=True,
         blank=True,
         help_text=_("1 = first, 2 = second ... -1 = last week of the month."),
+    )
+    yearly_dates = models.JSONField(
+        _("yearly dates"),
+        default=list,
+        blank=True,
+        help_text=_("Yearly recurrences: list of {month, day} pairs, several allowed."),
     )
 
     start_date = models.DateField(_("start date"))

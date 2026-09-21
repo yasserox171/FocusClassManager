@@ -1,13 +1,11 @@
 import clsx from 'clsx'
 import {
-  BarChart3,
   CalendarDays,
   DoorOpen,
   LayoutDashboard,
   LogIn,
   LogOut,
   Menu,
-  Users,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -23,8 +21,6 @@ const NAV_ITEMS = [
   { to: '/', key: 'nav.dashboard', icon: LayoutDashboard, end: true },
   { to: '/bookings', key: 'nav.bookings', icon: CalendarDays, end: false },
   { to: '/rooms', key: 'nav.rooms', icon: DoorOpen, end: false },
-  { to: '/employees', key: 'nav.employees', icon: Users, end: false },
-  { to: '/analytics', key: 'nav.analytics', icon: BarChart3, end: false },
 ]
 
 export function Layout() {

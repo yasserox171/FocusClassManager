@@ -79,15 +79,18 @@ def expand_recurrence(
     interval: int = 1,
     weekdays: list[int] | None = None,
     monthly_mode: str = MonthlyMode.DAY_OF_MONTH,
-    month_day: int | None = None,
+    month_days: list[int] | None = None,
     nth_week: int | None = None,
+    yearly_dates: list[dict] | None = None,
     limit: int | None = None,
 ) -> list[tuple[datetime, datetime]]:
     """
     Turn a recurrence rule into the concrete list of ``(start, end)`` windows.
 
     ``end_date`` is inclusive: a rule ending on 31 March still produces the
-    occurrence of 31 March.
+    occurrence of 31 March. Weekly days, monthly day-of-month numbers and
+    yearly month/day pairs all accept several values, so one series can cover
+    several sessions per week / month / year at once.
     """
     if end_date < start_date:
         raise RecurrenceError("La date de fin doit être postérieure à la date de début.")
@@ -102,7 +105,7 @@ def expand_recurrence(
     if freq is None:
         raise RecurrenceError(f"Type de récurrence inconnu: {recurrence_type}")
 
-    kwargs: dict = {
+    base_kwargs: dict = {
         "freq": freq,
         "interval": interval,
         "dtstart": datetime.combine(start_date, time.min),
@@ -115,23 +118,48 @@ def expand_recurrence(
             days = [start_date.weekday()]
         if any(day < 0 or day > 6 for day in days):
             raise RecurrenceError("Les jours de la semaine doivent être compris entre 0 et 6.")
-        kwargs["byweekday"] = days
+        occurrences = list(rrule(byweekday=days, **base_kwargs))[:limit]
 
     elif recurrence_type == RecurrenceType.MONTHLY:
         if monthly_mode == MonthlyMode.NTH_WEEKDAY:
-            weekday = (weekdays or [start_date.weekday()])[0]
+            days = sorted({int(day) for day in (weekdays or [])})
+            if not days:
+                days = [start_date.weekday()]
+            if any(day < 0 or day > 6 for day in days):
+                raise RecurrenceError("Les jours de la semaine doivent être compris entre 0 et 6.")
             position = nth_week or 1
             if position == 0:
                 raise RecurrenceError("Le rang de la semaine ne peut pas être 0.")
-            kwargs["byweekday"] = _nth_weekday(int(weekday), int(position))
+            byweekday = [_nth_weekday(day, int(position)) for day in days]
+            occurrences = list(rrule(byweekday=byweekday, **base_kwargs))[:limit]
         else:
-            kwargs["bymonthday"] = int(month_day or start_date.day)
+            days = sorted({int(day) for day in (month_days or [])})
+            if not days:
+                days = [start_date.day]
+            if any(day < 1 or day > 31 for day in days):
+                raise RecurrenceError("Les jours du mois doivent être compris entre 1 et 31.")
+            occurrences = list(rrule(bymonthday=days, **base_kwargs))[:limit]
 
     elif recurrence_type == RecurrenceType.YEARLY:
-        kwargs["bymonth"] = start_date.month
-        kwargs["bymonthday"] = start_date.day
+        pairs = yearly_dates or [{"month": start_date.month, "day": start_date.day}]
+        seen: set[datetime] = set()
+        merged: list[datetime] = []
+        for pair in pairs:
+            try:
+                month, day = int(pair["month"]), int(pair["day"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise RecurrenceError("Date annuelle invalide.") from exc
+            if not (1 <= month <= 12 and 1 <= day <= 31):
+                raise RecurrenceError("Date annuelle invalide.")
+            for item in rrule(bymonth=month, bymonthday=day, **base_kwargs):
+                if item not in seen:
+                    seen.add(item)
+                    merged.append(item)
+        occurrences = sorted(merged)[:limit]
 
-    occurrences = list(rrule(**kwargs))[:limit]
+    else:
+        occurrences = list(rrule(**base_kwargs))[:limit]
+
     if not occurrences:
         raise RecurrenceError(
             "Cette règle de récurrence ne génère aucune date dans la période choisie."
@@ -354,8 +382,9 @@ def create_recurrent_bookings(
             interval=recurrence.get("interval", 1),
             weekdays=recurrence.get("weekdays") or [],
             monthly_mode=recurrence.get("monthly_mode", MonthlyMode.DAY_OF_MONTH),
-            month_day=recurrence.get("month_day"),
+            month_days=recurrence.get("month_days") or [],
             nth_week=recurrence.get("nth_week"),
+            yearly_dates=recurrence.get("yearly_dates") or [],
             start_date=recurrence["start_date"],
             end_date=recurrence["end_date"],
             start_time=recurrence["start_time"],

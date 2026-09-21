@@ -9,10 +9,8 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { HeaderBar } from './src/components/HeaderBar'
 import { AuthProvider } from './src/context/AuthContext'
 import './src/i18n'
-import { AnalyticsScreen } from './src/screens/AnalyticsScreen'
 import { BookingsScreen } from './src/screens/BookingsScreen'
 import { DashboardScreen } from './src/screens/DashboardScreen'
-import { EmployeesScreen } from './src/screens/EmployeesScreen'
 import { LoginScreen } from './src/screens/LoginScreen'
 import { RoomsScreen } from './src/screens/RoomsScreen'
 import { colors } from './src/theme'
@@ -25,8 +23,6 @@ const TAB_GLYPHS: Record<string, string> = {
   dashboard: '▦',
   bookings: '▤',
   rooms: '▣',
-  employees: '☰',
-  analytics: '▥',
 }
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
@@ -68,16 +64,6 @@ function Tabs({ navigation }: { navigation: { navigate: (route: string) => void 
           options={{ title: t('nav.bookings') }}
         />
         <Tab.Screen name="Rooms" component={RoomsScreen} options={{ title: t('nav.rooms') }} />
-        <Tab.Screen
-          name="Employees"
-          component={EmployeesScreen}
-          options={{ title: t('nav.employees') }}
-        />
-        <Tab.Screen
-          name="Analytics"
-          component={AnalyticsScreen}
-          options={{ title: t('nav.analytics') }}
-        />
       </Tab.Navigator>
     </View>
   )
