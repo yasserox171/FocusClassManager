@@ -97,6 +97,8 @@ export function BookingAgenda({
   const intlLocale = isRtl ? 'ar-MA' : 'fr-FR'
 
   const [startHour, setStartHour] = useState(8)
+  /** Set as soon as the visitor scrolls the hours: auto-fit then steps aside. */
+  const [hoursPinnedByUser, setHoursPinnedByUser] = useState(false)
   const touchRef = useRef<{ x: number; y: number } | null>(null)
   const [now, setNow] = useState(() => centerToday())
 
@@ -113,6 +115,31 @@ export function BookingAgenda({
     () => Array.from({ length: daysVisible }, (_, index) => addDays(startOfDay(anchorDate), index)),
     [anchorDate, daysVisible],
   )
+
+  /**
+   * Centres do not all work at the same hours: some teach in the morning,
+   * others only in the evening. Rather than a fixed 08:00 window that would
+   * open on an empty grid, the window lands on the earliest session of the
+   * days on screen - until the visitor scrolls the hours themselves.
+   */
+  const earliestHour = useMemo(() => {
+    let earliest: number | null = null
+    for (const booking of bookings) {
+      const start = toCenterWallClock(booking.start_datetime)
+      if (!days.some((day) => isSameDay(start, day))) continue
+      if (earliest === null || start.getHours() < earliest) earliest = start.getHours()
+    }
+    return earliest
+  }, [bookings, days])
+
+  useEffect(() => {
+    if (hoursPinnedByUser || earliestHour === null) return
+    const fitted = Math.min(
+      Math.max(earliestHour - 1, DAY_START_HOUR),
+      Math.max(DAY_START_HOUR, DAY_END_HOUR - hoursVisible),
+    )
+    setStartHour(fitted)
+  }, [earliestHour, hoursPinnedByUser, hoursVisible])
 
   /** Bookings split per day, then laid out, plus what falls outside the window. */
   const columns = useMemo(() => {
@@ -156,8 +183,10 @@ export function BookingAgenda({
 
   // -- navigation --------------------------------------------------------
   const shiftDays = (direction: number) => onAnchorDateChange(addDays(anchorDate, direction * daysVisible))
-  const shiftHours = (direction: number) =>
+  const shiftHours = (direction: number) => {
+    setHoursPinnedByUser(true)
     setStartHour((current) => Math.min(maxStartHour, Math.max(DAY_START_HOUR, current + direction)))
+  }
 
   const handleTouchStart = (event: React.TouchEvent) => {
     const touch = event.touches[0]
@@ -212,7 +241,10 @@ export function BookingAgenda({
           </button>
           <button
             type="button"
-            onClick={() => onAnchorDateChange(centerToday())}
+            onClick={() => {
+              setHoursPinnedByUser(false)
+              onAnchorDateChange(centerToday())
+            }}
             className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
           >
             {t('common.today')}
