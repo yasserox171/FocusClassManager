@@ -48,8 +48,47 @@ interface bilingue **arabe (RTL)** et **français (LTR)**.
 - Suppression d'une séance, des séances suivantes, ou de la série entière.
 - Annulation par défaut (statut `cancelled`, l'historique reste consultable) ;
   suppression définitive réservée aux administrateurs.
-- Vue **calendrier** (mois / semaine / jour / agenda) et vue **liste** filtrable et paginée.
+- Trois vues : **agenda**, **mois** et **liste** filtrable et paginée.
 - Créneaux nocturnes gérés : `22:00 → 01:00` se termine le lendemain.
+
+### Agenda (page d'accueil du site)
+
+La page des réservations est la page d'accueil : c'est ce que le centre vient
+consulter en premier.
+
+- **4 jours affichés à la fois** (1 / 4 / 7 au choix) et **8 heures visibles**,
+  pour que les séances restent lisibles, y compris sur un téléphone.
+- Navigation par les flèches, ou **au doigt** : glisser à droite / à gauche change
+  les jours, glisser vers le haut / le bas change la tranche horaire.
+- Les **séances simultanées** (deux salles occupées en même temps) sont posées
+  côte à côte, chacune sur sa colonne, et un badge signale leur présence.
+- Les réservations hors de la tranche horaire affichée ne disparaissent pas :
+  elles sont comptées en haut (« 3 avant ») et en bas (« 1 après ») de la journée.
+- Trait rouge de l'heure courante, et chaque séance porte la couleur de sa salle.
+
+### Filtres des réservations
+
+La même barre de filtres s'applique à l'agenda, au mois et à la liste :
+
+| Filtre | Ce qu'il permet |
+| --- | --- |
+| **Enseignant** | Les séances d'un enseignant enregistré (`?teacher=<id>`) |
+| **Type d'activité** | Cours des élèves, formation, réunion, examen, activité, autre |
+| **Salle** | Les séances d'une salle donnée |
+| **Recherche** | Intitulé, objet, salle ou nom du responsable |
+| Statut / période | Confirmée ou annulée ; aujourd'hui, à venir, historique (vue liste) |
+
+Le type d'activité est porté par la réservation **et** par la série récurrente ;
+modifier la série le propage à ses séances à venir.
+
+### Enseignants
+
+- Page **Enseignants** : annuaire consultable par tous, création et modification
+  réservées à l'administrateur.
+- Une réservation est attribuée soit à un **enseignant enregistré**, soit à un
+  **nom saisi librement** quand la personne n'est pas dans la base — les deux
+  s'affichent de la même façon et les deux sont filtrables.
+- Depuis l'annuaire, un bouton ouvre l'agenda déjà filtré sur l'enseignant.
 
 ### Tableau de bord et statistiques
 - Compteurs : salles totales, disponibles maintenant, occupées, en maintenance,
@@ -197,7 +236,8 @@ Schéma OpenAPI brut : `/api/schema/`.
 | GET/POST | `/api/bookings/` | Réservations ponctuelles **et** séries récurrentes |
 | POST | `/api/bookings/preview/` | Aperçu d'une récurrence sans création |
 | GET | `/api/bookings/check-collision/` | Vérifie un créneau unique |
-| GET | `/api/bookings/calendar/?start=&end=` | Réservations d'une fenêtre (calendrier) |
+| GET | `/api/bookings/calendar/?start=&end=` | Réservations d'une fenêtre (agenda), filtrable par `rooms`, `teacher`, `category`, `search` |
+| GET | `/api/employees/teachers/` | Les enseignants actifs, sans pagination |
 | GET | `/api/bookings/upcoming/?days=7` | Prochaines réservations |
 | DELETE | `/api/bookings/{id}/?scope=series` | Annule l'occurrence, les suivantes ou la série |
 | GET/PATCH | `/api/booking-series/{id}/` | Série récurrente (modification propagée au futur) |
@@ -301,7 +341,7 @@ seul un **administrateur** peut créer, modifier ou supprimer quoi que ce soit.
 | --- | --- | --- |
 | Salles, ressources, incidents | Lecture | Tout |
 | Réservations et séries | Lecture | Tout, suppression définitive |
-| Employés et départements | Lecture | Tout |
+| Employés, enseignants et départements | Lecture | Tout |
 | Statistiques et alertes | Lecture | Tout |
 | Comptes utilisateurs (`/api/users/`) | — | Tout |
 
@@ -361,6 +401,16 @@ Toutes les variables sont documentées dans [`.env.example`](.env.example).
 - **الحجوزات**: عادية ودورية (يومي، أسبوعي، شهري، سنوي) مع تحديد أيام الأسبوع
   والفاصل الزمني، وكشف تلقائي للتعارضات قبل الحفظ، وإمكانية حذف حصة واحدة أو
   الحصص اللاحقة أو السلسلة كاملة.
+- **الأجندة** هي الصفحة الأولى للموقع: تعرض **4 أيام** و**8 ساعات** فقط حتى تكون
+  مقروءة، ويمكن تصفح باقي الأيام بالنقر على السهمين أو بالسحب يميناً ويساراً على
+  الهاتف، وتصفح الساعات بالنقر أعلى وأسفل أو بالسحب أعلى وأسفل. **الحصص المتداخلة**
+  (قاعتان مشغولتان في نفس الوقت) تظهر جنباً إلى جنب كل واحدة في عمود خاص بها،
+  والحجوزات خارج نافذة الساعات تُحتسب في الأعلى والأسفل («3 قبل» / «1 بعد»).
+- **الفلاتر**: حسب **الأستاذ**، أو **نوع النشاط** (دراسة التلاميذ، تدريب، اجتماع،
+  امتحان، نشاط، أخرى)، أو **القاعة**، أو بالبحث الحر. ونفس الفلاتر تشتغل في
+  الأجندة وفي عرض الشهر وفي القائمة.
+- **الأساتذة**: صفحة خاصة لإضافة أستاذ وتعديله. وعند الحجز يُختار صاحب الحجز من
+  الأساتذة المسجلين، وإن لم يكن مسجلاً يمكن كتابة اسمه مباشرة.
 - **الموظفون**: الأدوار والصلاحيات والقاعات المسؤول عنها.
 - **لوحة القيادة**: تقويم تفاعلي، الحجوزات القادمة، التنبيهات، ونسب الاستخدام.
 - **الإحصائيات**: نسبة استخدام كل قاعة، أوقات الذروة، الحجوزات عبر الزمن،

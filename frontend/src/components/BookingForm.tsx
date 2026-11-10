@@ -9,6 +9,7 @@ import { parseApiError } from '@/services/api'
 import { bookingService } from '@/services/bookingService'
 import type {
   Booking,
+  BookingCategory,
   BookingPayload,
   BookingPreview,
   ConflictPolicy,
@@ -27,10 +28,13 @@ import { Badge, Button, Field, Input, Select, Textarea } from './ui'
 interface BookingFormValues {
   room: number
   title: string
+  category: BookingCategory
   purpose: string
   notes: string
   expected_attendees: number
+  /** Employee id of the owner, or `__free__` when the name is typed in. */
   booked_by: string
+  booked_by_name: string
   start_date: string
   end_date: string
   recurrence_type: RecurrenceType
@@ -64,6 +68,16 @@ interface BookingFormProps {
 }
 
 const RECURRENCE_TYPES: RecurrenceType[] = ['none', 'daily', 'weekly', 'monthly', 'yearly']
+const CATEGORIES: BookingCategory[] = [
+  'study',
+  'training',
+  'meeting',
+  'exam',
+  'activity',
+  'other',
+]
+/** Sentinel of the owner selector: "someone who is not registered". */
+const FREE_TEXT_OWNER = '__free__'
 const WEEKDAY_INDEXES = [0, 1, 2, 3, 4, 5, 6]
 const MONTH_DAY_INDEXES = Array.from({ length: 31 }, (_, index) => index + 1)
 const MONTH_INDEXES = Array.from({ length: 12 }, (_, index) => index + 1)
@@ -106,10 +120,16 @@ export function BookingForm({
     defaultValues: {
       room: booking?.room ?? bookableRooms[0]?.id ?? 0,
       title: booking?.title ?? '',
+      category: booking?.category ?? 'study',
       purpose: booking?.purpose ?? '',
       notes: booking?.notes ?? '',
       expected_attendees: booking?.expected_attendees ?? 1,
-      booked_by: booking?.booked_by ? String(booking.booked_by) : '',
+      booked_by: booking?.booked_by
+        ? String(booking.booked_by)
+        : booking?.booked_by_name
+          ? FREE_TEXT_OWNER
+          : '',
+      booked_by_name: booking?.booked_by ? '' : (booking?.booked_by_name ?? ''),
       start_date: toDateInput(defaultStart),
       end_date: toDateInput(initialSlot?.end ?? defaultStart),
       recurrence_type: 'none',
@@ -155,6 +175,16 @@ export function BookingForm({
     setPreview(null)
   }, [roomResourceIds])
 
+  const ownerIsFreeText = watch('booked_by') === FREE_TEXT_OWNER
+  const teacherOptions = useMemo(
+    () => employees.filter((employee) => employee.role === 'teacher'),
+    [employees],
+  )
+  const otherStaff = useMemo(
+    () => employees.filter((employee) => employee.role !== 'teacher'),
+    [employees],
+  )
+
   const isRecurring = recurrenceType !== 'none'
   const isMultiSlotType = MULTI_SLOT_TYPES.includes(recurrenceType)
   const effectiveSlots = isMultiSlotType ? slots : slots.slice(0, 1)
@@ -163,10 +193,17 @@ export function BookingForm({
     effectiveSlots.map((slot) => ({
       room: Number(values.room),
       title: values.title,
+      category: values.category,
       purpose: values.purpose,
       notes: values.notes,
       expected_attendees: Number(values.expected_attendees),
-      booked_by: values.booked_by ? Number(values.booked_by) : null,
+      // Either a registered teacher, or a name the administrator typed in.
+      booked_by:
+        values.booked_by && values.booked_by !== FREE_TEXT_OWNER
+          ? Number(values.booked_by)
+          : null,
+      booked_by_name:
+        values.booked_by === FREE_TEXT_OWNER ? values.booked_by_name.trim() : '',
       required_resources: selectedResources,
       recurrence_type: values.recurrence_type,
       interval: Number(values.interval) || 1,
@@ -389,19 +426,62 @@ export function BookingForm({
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t('bookings.purpose')}>
-          <Input {...register('purpose')} />
-        </Field>
-        <Field label={t('bookings.bookedBy')}>
-          <Select {...register('booked_by')}>
-            <option value="">—</option>
-            {employees.map((employee) => (
-              <option key={employee.id} value={employee.id}>
-                {employee.full_name}
+        <Field label={t('bookings.category')} required>
+          <Select {...register('category')}>
+            {CATEGORIES.map((category) => (
+              <option key={category} value={category}>
+                {t(`bookings.categories.${category}`)}
               </option>
             ))}
           </Select>
         </Field>
+        <Field label={t('bookings.purpose')}>
+          <Input {...register('purpose')} />
+        </Field>
+      </div>
+
+      {/* Owner of the booking: a registered teacher, or a name typed in. */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label={t('bookings.bookedBy')}>
+          <Select {...register('booked_by')}>
+            <option value="">{t('bookings.noTeacher')}</option>
+            {teacherOptions.length > 0 && (
+              <optgroup label={t('bookings.ownerRegistered')}>
+                {teacherOptions.map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.full_name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {otherStaff.length > 0 && (
+              <optgroup label={t('bookings.ownerOtherStaff')}>
+                {otherStaff.map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.full_name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            <option value={FREE_TEXT_OWNER}>{t('bookings.ownerFreeText')}</option>
+          </Select>
+        </Field>
+
+        {ownerIsFreeText && (
+          <Field
+            label={t('bookings.ownerFreeTextLabel')}
+            required
+            hint={t('bookings.ownerFreeTextHint')}
+            error={errors.booked_by_name?.message}
+          >
+            <Input
+              {...register('booked_by_name', {
+                validate: (value) =>
+                  !ownerIsFreeText || value.trim().length > 0 || t('common.required'),
+              })}
+            />
+          </Field>
+        )}
       </div>
 
       {/* Resources available in the selected room */}

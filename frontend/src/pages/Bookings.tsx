@@ -1,6 +1,15 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { addDays, startOfMonth, subDays } from 'date-fns'
-import { CalendarDays, CalendarSearch, List, Plus, Repeat, Trash2 } from 'lucide-react'
+import {
+  CalendarDays,
+  CalendarRange,
+  CalendarSearch,
+  FilterX,
+  List,
+  Plus,
+  Repeat,
+  Trash2,
+} from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import type { View } from 'react-big-calendar'
 import { Views } from 'react-big-calendar'
@@ -8,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 
 import { AvailabilityChecker } from '@/components/AvailabilityChecker'
+import { BookingAgenda } from '@/components/BookingAgenda'
 import { BookingCalendar } from '@/components/BookingCalendar'
 import { BookingForm } from '@/components/BookingForm'
 import { DataTable } from '@/components/DataTable'
@@ -30,10 +40,20 @@ import { parseApiError } from '@/services/api'
 import { bookingService, type DeleteScope } from '@/services/bookingService'
 import { employeeService } from '@/services/employeeService'
 import { roomService } from '@/services/roomService'
-import type { Booking } from '@/types'
+import type { Booking, BookingCategory } from '@/types'
 import { formatDateTime, formatRange } from '@/utils/format'
+import { centerToday } from '@/utils/timezone'
 
-type ViewMode = 'calendar' | 'list'
+type ViewMode = 'agenda' | 'calendar' | 'list'
+
+const CATEGORIES: BookingCategory[] = [
+  'study',
+  'training',
+  'meeting',
+  'exam',
+  'activity',
+  'other',
+]
 
 export function Bookings() {
   const { t, i18n } = useTranslation()
@@ -41,13 +61,18 @@ export function Bookings() {
   const { isAdmin } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const [mode, setMode] = useState<ViewMode>('calendar')
+  const [mode, setMode] = useState<ViewMode>('agenda')
   const [calendarDate, setCalendarDate] = useState(new Date())
   const [calendarView, setCalendarView] = useState<View>(Views.WEEK)
+  // The agenda shows a short window of days, browsable by arrows or by swipe.
+  const [agendaDate, setAgendaDate] = useState(() => centerToday())
+  const [daysVisible, setDaysVisible] = useState(4)
 
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounced(search)
   const [roomFilter, setRoomFilter] = useState('')
+  const [teacherFilter, setTeacherFilter] = useState(searchParams.get('teacher') ?? '')
+  const [categoryFilter, setCategoryFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [periodFilter, setPeriodFilter] = useState('')
   const [page, setPage] = useState(1)
@@ -62,6 +87,8 @@ export function Bookings() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   const rooms = useAsync(() => roomService.all(), [])
+  // Public: the teacher list feeds the filter bar for every visitor.
+  const teachers = useAsync(() => employeeService.teachers(), [refreshKey])
   const employees = useAsync(
     () => (isAdmin ? employeeService.all() : Promise.resolve([])),
     [isAdmin],
@@ -69,23 +96,50 @@ export function Bookings() {
   const resourceTypes = useAsync(() => roomService.resourceTypes(), [])
 
   const { rangeStart, rangeEnd } = useMemo(() => {
+    if (mode === 'agenda') {
+      // Fetch a padded window so swiping a few days never waits on the network.
+      return {
+        rangeStart: subDays(agendaDate, 14).toISOString(),
+        rangeEnd: addDays(agendaDate, 30).toISOString(),
+      }
+    }
     const anchor = startOfMonth(calendarDate)
     return {
       rangeStart: subDays(anchor, 7).toISOString(),
       rangeEnd: addDays(anchor, 45).toISOString(),
     }
-  }, [calendarDate])
+  }, [mode, agendaDate, calendarDate])
+
+  /** The filters shared by the agenda, the month view and the list. */
+  const sharedFilters = useMemo(
+    () => ({
+      rooms: roomFilter ? [Number(roomFilter)] : undefined,
+      teacher: teacherFilter ? Number(teacherFilter) : undefined,
+      category: categoryFilter || undefined,
+      search: debouncedSearch || undefined,
+    }),
+    [roomFilter, teacherFilter, categoryFilter, debouncedSearch],
+  )
+
+  const activeFilterCount = [roomFilter, teacherFilter, categoryFilter, statusFilter, periodFilter, search]
+    .filter(Boolean).length
+
+  const clearFilters = () => {
+    setRoomFilter('')
+    setTeacherFilter('')
+    setCategoryFilter('')
+    setStatusFilter('')
+    setPeriodFilter('')
+    setSearch('')
+    setPage(1)
+  }
 
   const calendarBookings = useAsync(
     () =>
-      mode === 'calendar'
-        ? bookingService.calendar(
-            rangeStart,
-            rangeEnd,
-            roomFilter ? [Number(roomFilter)] : undefined,
-          )
-        : Promise.resolve([]),
-    [mode, rangeStart, rangeEnd, roomFilter, refreshKey],
+      mode === 'list'
+        ? Promise.resolve([])
+        : bookingService.calendar(rangeStart, rangeEnd, sharedFilters),
+    [mode, rangeStart, rangeEnd, sharedFilters, refreshKey],
   )
 
   const listBookings = useAsync(
@@ -94,13 +148,25 @@ export function Bookings() {
         ? bookingService.list({
             search: debouncedSearch,
             room: roomFilter ? Number(roomFilter) : undefined,
+            teacher: teacherFilter ? Number(teacherFilter) : undefined,
+            category: categoryFilter || undefined,
             status: statusFilter || undefined,
             period: (periodFilter || undefined) as 'upcoming' | 'past' | 'today' | undefined,
             page,
             ordering: '-start_datetime',
           })
         : Promise.resolve(null),
-    [mode, debouncedSearch, roomFilter, statusFilter, periodFilter, page, refreshKey],
+    [
+      mode,
+      debouncedSearch,
+      roomFilter,
+      teacherFilter,
+      categoryFilter,
+      statusFilter,
+      periodFilter,
+      page,
+      refreshKey,
+    ],
   )
 
   // Deep link: /bookings?booking=42 opens the detail modal.
@@ -171,6 +237,13 @@ export function Bookings() {
         accessorKey: 'room_detail.name',
         header: t('rooms.room'),
         cell: ({ row }) => row.original.room_detail.name,
+      },
+      {
+        accessorKey: 'category',
+        header: t('bookings.category'),
+        cell: ({ row }) => (
+          <Badge tone="blue">{t(`bookings.categories.${row.original.category}`)}</Badge>
+        ),
       },
       {
         accessorKey: 'start_datetime',
@@ -246,26 +319,25 @@ export function Bookings() {
         action={
           <div className="flex items-center gap-2">
             <div className="flex rounded-lg border border-slate-300 bg-white p-1">
-              <button
-                type="button"
-                onClick={() => setMode('calendar')}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                  mode === 'calendar' ? 'bg-brand-600 text-white' : 'text-slate-600'
-                }`}
-              >
-                <CalendarDays size={14} />
-                {t('bookings.calendarView')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('list')}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                  mode === 'list' ? 'bg-brand-600 text-white' : 'text-slate-600'
-                }`}
-              >
-                <List size={14} />
-                {t('bookings.listView')}
-              </button>
+              {(
+                [
+                  { value: 'agenda', label: t('bookings.agendaView'), icon: CalendarRange },
+                  { value: 'calendar', label: t('bookings.monthView'), icon: CalendarDays },
+                  { value: 'list', label: t('bookings.listView'), icon: List },
+                ] as const
+              ).map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setMode(option.value)}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                    mode === option.value ? 'bg-brand-600 text-white' : 'text-slate-600'
+                  }`}
+                >
+                  <option.icon size={14} />
+                  {option.label}
+                </button>
+              ))}
             </div>
             {isAdmin ? (
               <Button icon={<Plus size={16} />} onClick={() => openCreate()}>
@@ -282,18 +354,49 @@ export function Bookings() {
 
       <Card className="mb-4" bodyClassName="p-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {mode === 'list' && (
-            <Field label={t('common.search')}>
-              <Input
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value)
-                  setPage(1)
-                }}
-                placeholder={t('bookings.filters.searchPlaceholder')}
-              />
-            </Field>
-          )}
+          {/* The search box now applies to every view, agenda included. */}
+          <Field label={t('common.search')}>
+            <Input
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value)
+                setPage(1)
+              }}
+              placeholder={t('bookings.filters.searchPlaceholder')}
+            />
+          </Field>
+          <Field label={t('bookings.teacher')}>
+            <Select
+              value={teacherFilter}
+              onChange={(event) => {
+                setTeacherFilter(event.target.value)
+                setPage(1)
+              }}
+            >
+              <option value="">{t('bookings.allTeachers')}</option>
+              {(teachers.data ?? []).map((teacher) => (
+                <option key={teacher.id} value={teacher.id}>
+                  {teacher.full_name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label={t('bookings.category')}>
+            <Select
+              value={categoryFilter}
+              onChange={(event) => {
+                setCategoryFilter(event.target.value)
+                setPage(1)
+              }}
+            >
+              <option value="">{t('bookings.allCategories')}</option>
+              {CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {t(`bookings.categories.${category}`)}
+                </option>
+              ))}
+            </Select>
+          </Field>
           <Field label={t('rooms.room')}>
             <Select
               value={roomFilter}
@@ -342,10 +445,45 @@ export function Bookings() {
             </>
           )}
         </div>
+
+        {activeFilterCount > 0 && (
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+            <span className="text-xs text-slate-500">
+              {t('bookings.filtersActive', { count: activeFilterCount })}
+            </span>
+            <Button
+              variant="ghost"
+              icon={<FilterX size={14} />}
+              className="px-2 py-1 text-xs"
+              onClick={clearFilters}
+            >
+              {t('bookings.clearFilters')}
+            </Button>
+          </div>
+        )}
       </Card>
 
       <Card bodyClassName={mode === 'list' ? 'p-0' : 'p-3 sm:p-5'}>
-        {mode === 'calendar' ? (
+        {mode === 'agenda' ? (
+          <>
+            {calendarBookings.loading && <Spinner />}
+            {calendarBookings.error && <ErrorState message={calendarBookings.error} />}
+            {calendarBookings.data && (
+              <BookingAgenda
+                bookings={calendarBookings.data}
+                anchorDate={agendaDate}
+                onAnchorDateChange={setAgendaDate}
+                daysVisible={daysVisible}
+                onDaysVisibleChange={setDaysVisible}
+                hoursVisible={8}
+                onSelectBooking={setSelected}
+                onSelectSlot={
+                  isAdmin ? (start, end) => openCreate({ start, end }) : undefined
+                }
+              />
+            )}
+          </>
+        ) : mode === 'calendar' ? (
           <>
             {calendarBookings.loading && <Spinner />}
             {calendarBookings.error && <ErrorState message={calendarBookings.error} />}
@@ -426,6 +564,10 @@ export function Bookings() {
           <div className="space-y-4 text-sm">
             <dl className="grid gap-3 sm:grid-cols-2">
               <Detail label={t('rooms.room')} value={selected.room_detail.name} />
+              <Detail
+                label={t('bookings.category')}
+                value={t(`bookings.categories.${selected.category}`)}
+              />
               <Detail
                 label={t('common.date')}
                 value={formatRange(selected.start_datetime, selected.end_datetime, i18n.language)}

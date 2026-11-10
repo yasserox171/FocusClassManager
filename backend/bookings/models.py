@@ -23,6 +23,21 @@ class BookingStatus(models.TextChoices):
     CANCELLED = "cancelled", _("Cancelled")
 
 
+class BookingCategory(models.TextChoices):
+    """
+    What the room is booked for. Drives the filters of the booking page:
+    the centre wants to look at the pupils' classes, the trainings, or the
+    meetings separately.
+    """
+
+    STUDY = "study", _("Pupils' classes")
+    TRAINING = "training", _("Training")
+    MEETING = "meeting", _("Meeting")
+    EXAM = "exam", _("Exam")
+    ACTIVITY = "activity", _("Activity")
+    OTHER = "other", _("Other")
+
+
 class ConflictPolicy(models.TextChoices):
     STRICT = "strict", _("Reject the whole series on any conflict")
     SKIP = "skip", _("Create the free dates and skip the conflicting ones")
@@ -49,6 +64,14 @@ class BookingSeries(TimeStampedModel):
 
     room = models.ForeignKey("rooms.Room", related_name="booking_series", on_delete=models.CASCADE)
     title = models.CharField(_("title"), max_length=200)
+    category = models.CharField(
+        _("category"),
+        max_length=20,
+        choices=BookingCategory.choices,
+        default=BookingCategory.STUDY,
+        db_index=True,
+    )
+
     purpose = models.TextField(_("purpose"), blank=True)
     notes = models.TextField(_("notes"), blank=True)
     expected_attendees = models.PositiveIntegerField(_("expected attendees"), default=1)
@@ -167,6 +190,14 @@ class Booking(TimeStampedModel):
     )
     room = models.ForeignKey("rooms.Room", related_name="bookings", on_delete=models.PROTECT)
     title = models.CharField(_("title"), max_length=200)
+    category = models.CharField(
+        _("category"),
+        max_length=20,
+        choices=BookingCategory.choices,
+        default=BookingCategory.STUDY,
+        db_index=True,
+    )
+
     purpose = models.TextField(_("purpose"), blank=True)
     notes = models.TextField(_("notes"), blank=True)
     expected_attendees = models.PositiveIntegerField(_("expected attendees"), default=1)
@@ -211,6 +242,7 @@ class Booking(TimeStampedModel):
         indexes = [
             models.Index(fields=["room", "start_datetime", "end_datetime"]),
             models.Index(fields=["status", "start_datetime"]),
+            models.Index(fields=["category", "start_datetime"]),
         ]
         constraints = [
             models.CheckConstraint(

@@ -12,7 +12,8 @@
     "logout": "Déconnexion",
     "profile": "Mon profil",
     "login": "Connexion",
-    "readOnlyNotice": "Consultation publique. Connectez-vous pour modifier."
+    "readOnlyNotice": "Consultation publique. Connectez-vous pour modifier.",
+    "teachers": "Enseignants"
   },
   "common": {
     "add": "Ajouter",
@@ -223,14 +224,47 @@
       "endAfterStart": "L'heure de fin doit suivre l'heure de début",
       "capacityExceeded": "Le nombre de participants dépasse la capacité de la salle",
       "roomUnavailable": "Cette salle n'est pas disponible"
-    }
+    },
+    "category": "Type d'activité",
+    "allCategories": "Tous les types",
+    "categories": {
+      "study": "Cours des élèves",
+      "training": "Formation",
+      "meeting": "Réunion",
+      "exam": "Examen",
+      "activity": "Activité",
+      "other": "Autre"
+    },
+    "teacher": "Enseignant",
+    "allTeachers": "Tous les enseignants",
+    "noTeacher": "Sans enseignant",
+    "ownerRegistered": "Enseignant enregistré",
+    "ownerFreeText": "Autre nom (non enregistré)",
+    "ownerFreeTextLabel": "Nom du responsable",
+    "ownerFreeTextHint": "Si l'enseignant n'est pas enregistré, saisissez son nom ici.",
+    "agendaView": "Agenda",
+    "monthView": "Mois",
+    "filtersActive": "{{count}} filtre(s) actif(s)",
+    "clearFilters": "Effacer les filtres",
+    "daysVisible": "Jours affichés",
+    "earlierBookings": "{{count}} avant",
+    "laterBookings": "{{count}} après",
+    "overlapping": "Séances simultanées",
+    "previousDays": "Jours précédents",
+    "nextDays": "Jours suivants",
+    "earlierHours": "Heures précédentes",
+    "laterHours": "Heures suivantes",
+    "swipeHint": "Glissez à droite ou à gauche pour changer de jours, vers le haut ou le bas pour les heures.",
+    "noBookingsInWindow": "Aucune réservation sur cette période",
+    "ownerOtherStaff": "Autre personnel"
   },
   "employees": {
     "roles": {
       "admin": "Administrateur",
       "department_manager": "Chef de département",
       "room_manager": "Responsable de salle",
-      "staff": "Personnel administratif"
+      "staff": "Personnel administratif",
+      "teacher": "Enseignant"
     }
   },
   "analytics": {
@@ -292,5 +326,24 @@
     "10": "Octobre",
     "11": "Novembre",
     "12": "Décembre"
+  },
+  "teachers": {
+    "title": "Gestion des enseignants",
+    "subtitle": "Les enseignants enregistrés auxquels une réservation peut être attribuée",
+    "addTeacher": "Ajouter un enseignant",
+    "editTeacher": "Modifier l'enseignant",
+    "fullName": "Nom complet",
+    "email": "Adresse e-mail",
+    "phone": "Téléphone",
+    "department": "Département",
+    "subject": "Matière / spécialité",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "bookingsCount": "Réservations",
+    "deleteConfirm": "Supprimer l'enseignant « {{name}} » ? Ses réservations seront conservées.",
+    "empty": "Aucun enseignant enregistré",
+    "searchPlaceholder": "Rechercher par nom ou téléphone...",
+    "loginToManage": "Connectez-vous en administrateur pour ajouter ou modifier un enseignant.",
+    "viewBookings": "Voir ses réservations"
   }
 }

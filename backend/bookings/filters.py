@@ -7,6 +7,11 @@ class BookingFilter(filters.FilterSet):
     room = filters.NumberFilter(field_name="room_id")
     rooms = filters.BaseInFilter(field_name="room_id", lookup_expr="in")
     booked_by = filters.NumberFilter(field_name="booked_by_id")
+    # `teacher` is the wording the booking page uses; it is the same column.
+    teacher = filters.NumberFilter(field_name="booked_by_id")
+    teacher_name = filters.CharFilter(method="filter_teacher_name")
+    category = filters.CharFilter(field_name="category")
+    categories = filters.BaseInFilter(field_name="category", lookup_expr="in")
     series = filters.NumberFilter(field_name="series_id")
     status = filters.CharFilter(field_name="status")
     start_after = filters.IsoDateTimeFilter(field_name="start_datetime", lookup_expr="gte")
@@ -17,7 +22,18 @@ class BookingFilter(filters.FilterSet):
 
     class Meta:
         model = Booking
-        fields = ("room", "status", "series", "booked_by")
+        fields = ("room", "status", "series", "booked_by", "category")
+
+    def filter_teacher_name(self, queryset, name, value):
+        """
+        Matches the person who booked, whether they are a registered teacher
+        or a name that was simply typed in.
+        """
+        from django.db.models import Q
+
+        return queryset.filter(
+            Q(booked_by__full_name__icontains=value) | Q(booked_by_name__icontains=value)
+        )
 
     def filter_date(self, queryset, name, value):
         from datetime import time, timedelta
@@ -53,6 +69,8 @@ class BookingFilter(filters.FilterSet):
 
 
 class BookingSeriesFilter(filters.FilterSet):
+    teacher = filters.NumberFilter(field_name="booked_by_id")
+
     class Meta:
         model = BookingSeries
-        fields = ("room", "recurrence_type", "status", "booked_by")
+        fields = ("room", "recurrence_type", "status", "booked_by", "category")

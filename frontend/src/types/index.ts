@@ -1,4 +1,11 @@
-export type Role = 'admin' | 'department_manager' | 'room_manager' | 'staff'
+export type Role = 'admin' | 'department_manager' | 'room_manager' | 'teacher' | 'staff'
+export type BookingCategory =
+  | 'study'
+  | 'training'
+  | 'meeting'
+  | 'exam'
+  | 'activity'
+  | 'other'
 export type RoomStatus = 'available' | 'maintenance' | 'closed'
 export type BookingStatus = 'confirmed' | 'cancelled'
 export type RecurrenceType = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'
@@ -116,6 +123,7 @@ export interface Booking {
   room: number
   room_detail: Pick<Room, 'id' | 'name' | 'code' | 'color' | 'capacity' | 'location' | 'status'>
   title: string
+  category: BookingCategory
   purpose: string
   notes: string
   expected_attendees: number
@@ -141,6 +149,7 @@ export interface BookingSeries {
   room: number
   room_detail: Booking['room_detail']
   title: string
+  category: BookingCategory
   purpose: string
   notes: string
   expected_attendees: number
@@ -173,6 +182,7 @@ export interface YearlyDate {
 export interface BookingPayload {
   room: number
   title: string
+  category: BookingCategory
   purpose?: string
   notes?: string
   expected_attendees: number

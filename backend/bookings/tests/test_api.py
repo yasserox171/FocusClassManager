@@ -601,3 +601,138 @@ class AuthApiTests(APITestCase):
         response = self.client.get("/api/users/me/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["managed_room_ids"], [room.id])
+
+
+class CategoryAndTeacherFilterTests(APITestCase):
+    """Filters of the booking page: teacher, activity category, room."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            username="admin", email="admin@focus.ma", password="Focus!2025", role=Role.ADMIN
+        )
+        self.room_a = Room.objects.create(name="Salle A", code="sa", capacity=30)
+        self.room_b = Room.objects.create(name="Salle B", code="sb", capacity=30)
+        self.teacher = Employee.objects.create(full_name="Ahmed Mohamed", role=Role.TEACHER)
+        self.other_teacher = Employee.objects.create(full_name="Salma Tazi", role=Role.TEACHER)
+
+        start = timezone.now() + timedelta(days=1)
+        self.study = Booking.objects.create(
+            room=self.room_a,
+            title="Cours de maths",
+            category="study",
+            booked_by=self.teacher,
+            booked_by_name=self.teacher.full_name,
+            start_datetime=start,
+            end_datetime=start + timedelta(hours=2),
+        )
+        self.training = Booking.objects.create(
+            room=self.room_b,
+            title="Formation des formateurs",
+            category="training",
+            booked_by=self.other_teacher,
+            booked_by_name=self.other_teacher.full_name,
+            start_datetime=start,
+            end_datetime=start + timedelta(hours=2),
+        )
+        # A booking whose owner was simply typed in, not picked from the list.
+        self.guest = Booking.objects.create(
+            room=self.room_a,
+            title="Réunion exceptionnelle",
+            category="meeting",
+            booked_by_name="Invité externe",
+            start_datetime=start + timedelta(days=1),
+            end_datetime=start + timedelta(days=1, hours=1),
+        )
+
+    def test_filter_by_category(self):
+        response = self.client.get("/api/bookings/?category=training")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["title"], "Formation des formateurs")
+
+    def test_filter_by_several_categories(self):
+        response = self.client.get("/api/bookings/?categories=study,meeting")
+        self.assertEqual(response.data["count"], 2)
+
+    def test_filter_by_teacher(self):
+        response = self.client.get(f"/api/bookings/?teacher={self.teacher.id}")
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["booked_by_display"], "Ahmed Mohamed")
+
+    def test_filter_by_typed_in_owner_name(self):
+        response = self.client.get("/api/bookings/?teacher_name=Invité")
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["title"], "Réunion exceptionnelle")
+
+    def test_filter_by_room_and_category_together(self):
+        response = self.client.get(f"/api/bookings/?room={self.room_a.id}&category=study")
+        self.assertEqual(response.data["count"], 1)
+
+    def test_calendar_endpoint_honours_the_filters(self):
+        window = {
+            "start": (timezone.now() - timedelta(days=1)).isoformat(),
+            "end": (timezone.now() + timedelta(days=5)).isoformat(),
+        }
+        everything = self.client.get("/api/bookings/calendar/", window)
+        self.assertEqual(len(everything.data), 3)
+
+        filtered = self.client.get(
+            "/api/bookings/calendar/", {**window, "category": "study"}
+        )
+        self.assertEqual(len(filtered.data), 1)
+
+        by_teacher = self.client.get(
+            "/api/bookings/calendar/", {**window, "teacher": self.teacher.id}
+        )
+        self.assertEqual(len(by_teacher.data), 1)
+
+        by_search = self.client.get("/api/bookings/calendar/", {**window, "search": "Formation"})
+        self.assertEqual(len(by_search.data), 1)
+
+    def test_category_is_stored_on_creation_and_on_every_occurrence(self):
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(
+            "/api/bookings/",
+            {
+                "room": self.room_b.id,
+                "title": "Atelier hebdomadaire",
+                "category": "training",
+                "expected_attendees": 10,
+                "start_date": "2027-03-01",
+                "end_date": "2027-03-29",
+                "recurrence_type": "weekly",
+                "weekdays": ["monday"],
+                "start_time": "14:00",
+                "end_time": "16:00",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        created = Booking.objects.filter(title="Atelier hebdomadaire")
+        self.assertEqual(created.count(), 5)
+        self.assertTrue(all(item.category == "training" for item in created))
+        self.assertEqual(created.first().series.category, "training")
+
+    def test_teachers_endpoint_lists_only_active_teachers(self):
+        Employee.objects.create(full_name="Agent administratif", role=Role.STAFF)
+        Employee.objects.create(full_name="Ancien prof", role=Role.TEACHER, is_active=False)
+        response = self.client.get("/api/employees/teachers/")
+        self.assertEqual(response.status_code, 200)
+        names = [item["full_name"] for item in response.data]
+        self.assertEqual(names, ["Ahmed Mohamed", "Salma Tazi"])
+
+    def test_anonymous_visitor_can_read_teachers_but_not_create_one(self):
+        response = self.client.post(
+            "/api/employees/", {"full_name": "Nouveau", "role": Role.TEACHER}, format="json"
+        )
+        self.assertIn(response.status_code, (401, 403))
+
+    def test_admin_can_register_a_teacher(self):
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(
+            "/api/employees/",
+            {"full_name": "Khadija Idrissi", "role": Role.TEACHER, "phone": "0612345678"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertTrue(Employee.objects.filter(full_name="Khadija Idrissi").exists())

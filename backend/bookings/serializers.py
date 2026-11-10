@@ -9,6 +9,7 @@ from rooms.serializers import ResourceTypeSerializer
 
 from .models import (
     Booking,
+    BookingCategory,
     BookingSeries,
     BookingStatus,
     ConflictPolicy,
@@ -76,6 +77,7 @@ class BookingSerializer(serializers.ModelSerializer):
             "room",
             "room_detail",
             "title",
+            "category",
             "purpose",
             "notes",
             "expected_attendees",
@@ -118,6 +120,7 @@ class BookingSeriesSerializer(serializers.ModelSerializer):
             "room",
             "room_detail",
             "title",
+            "category",
             "purpose",
             "notes",
             "expected_attendees",
@@ -228,6 +231,9 @@ class BookingCreateSerializer(RecurrenceMixin):
 
     room = serializers.PrimaryKeyRelatedField(queryset=Room.objects.all())
     title = serializers.CharField(max_length=200)
+    category = serializers.ChoiceField(
+        choices=BookingCategory.choices, default=BookingCategory.STUDY
+    )
     purpose = serializers.CharField(required=False, allow_blank=True, default="")
     notes = serializers.CharField(required=False, allow_blank=True, default="")
     expected_attendees = serializers.IntegerField(min_value=1, default=1)
@@ -312,6 +318,7 @@ class BookingUpdateSerializer(serializers.ModelSerializer):
         fields = (
             "room",
             "title",
+            "category",
             "purpose",
             "notes",
             "expected_attendees",
@@ -370,6 +377,7 @@ class SeriesUpdateSerializer(serializers.ModelSerializer):
         model = BookingSeries
         fields = (
             "title",
+            "category",
             "purpose",
             "notes",
             "expected_attendees",
@@ -388,6 +396,7 @@ class SeriesUpdateSerializer(serializers.ModelSerializer):
         future = series.occurrences.filter(start_datetime__gte=timezone.now())
         future.update(
             title=series.title,
+            category=series.category,
             purpose=series.purpose,
             notes=series.notes,
             expected_attendees=series.expected_attendees,

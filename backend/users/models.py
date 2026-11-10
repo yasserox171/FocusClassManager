@@ -9,6 +9,7 @@ class Role(models.TextChoices):
     ADMIN = "admin", _("System administrator")
     DEPARTMENT_MANAGER = "department_manager", _("Department manager")
     ROOM_MANAGER = "room_manager", _("Room manager")
+    TEACHER = "teacher", _("Teacher")
     STAFF = "staff", _("Administrative staff")
 
 

@@ -12,7 +12,8 @@
     "logout": "تسجيل الخروج",
     "profile": "حسابي",
     "login": "تسجيل الدخول",
-    "readOnlyNotice": "الاطلاع متاح للجميع. سجّل الدخول للتعديل."
+    "readOnlyNotice": "الاطلاع متاح للجميع. سجّل الدخول للتعديل.",
+    "teachers": "الأساتذة"
   },
   "common": {
     "add": "إضافة",
@@ -223,14 +224,47 @@
       "endAfterStart": "يجب أن تكون ساعة النهاية بعد ساعة البداية",
       "capacityExceeded": "عدد الحاضرين يفوق سعة القاعة",
       "roomUnavailable": "هذه القاعة غير متاحة"
-    }
+    },
+    "category": "نوع النشاط",
+    "allCategories": "كل الأنواع",
+    "categories": {
+      "study": "دراسة التلاميذ",
+      "training": "تدريب",
+      "meeting": "اجتماع",
+      "exam": "امتحان",
+      "activity": "نشاط",
+      "other": "أخرى"
+    },
+    "teacher": "الأستاذ",
+    "allTeachers": "كل الأساتذة",
+    "noTeacher": "بدون أستاذ محدد",
+    "ownerRegistered": "أستاذ مسجل",
+    "ownerFreeText": "اسم آخر (غير مسجل)",
+    "ownerFreeTextLabel": "اسم صاحب الحجز",
+    "ownerFreeTextHint": "إذا لم يكن الأستاذ مسجلاً في قاعدة البيانات، اكتب اسمه هنا.",
+    "agendaView": "الأجندة",
+    "monthView": "الشهر",
+    "filtersActive": "{{count}} فلتر نشط",
+    "clearFilters": "مسح الفلاتر",
+    "daysVisible": "عدد الأيام",
+    "earlierBookings": "{{count}} قبل",
+    "laterBookings": "{{count}} بعد",
+    "overlapping": "حصص متداخلة",
+    "previousDays": "الأيام السابقة",
+    "nextDays": "الأيام التالية",
+    "earlierHours": "ساعات سابقة",
+    "laterHours": "ساعات لاحقة",
+    "swipeHint": "اسحب يميناً أو يساراً لتغيير الأيام، وأعلى أو أسفل لتغيير الساعات.",
+    "noBookingsInWindow": "لا توجد حجوزات في هذه الفترة",
+    "ownerOtherStaff": "موظفون آخرون"
   },
   "employees": {
     "roles": {
       "admin": "مدير النظام",
       "department_manager": "مدير القسم",
       "room_manager": "مسؤول القاعة",
-      "staff": "موظف إداري"
+      "staff": "موظف إداري",
+      "teacher": "أستاذ"
     }
   },
   "analytics": {
@@ -292,5 +326,24 @@
     "10": "أكتوبر",
     "11": "نونبر",
     "12": "دجنبر"
+  },
+  "teachers": {
+    "title": "تدبير الأساتذة",
+    "subtitle": "الأساتذة المسجلون الذين يمكن إسناد الحجوزات إليهم",
+    "addTeacher": "إضافة أستاذ",
+    "editTeacher": "تعديل الأستاذ",
+    "fullName": "الاسم الكامل",
+    "email": "البريد الإلكتروني",
+    "phone": "الهاتف",
+    "department": "القسم",
+    "subject": "المادة / التخصص",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "bookingsCount": "عدد الحجوزات",
+    "deleteConfirm": "هل تريد فعلاً حذف الأستاذ « {{name}} »؟ ستبقى حجوزاته محفوظة.",
+    "empty": "لا يوجد أستاذ مسجل بعد",
+    "searchPlaceholder": "البحث بالاسم أو الهاتف...",
+    "loginToManage": "سجل دخولك كمدير لإضافة أستاذ أو تعديله.",
+    "viewBookings": "عرض حجوزاته"
   }
 }

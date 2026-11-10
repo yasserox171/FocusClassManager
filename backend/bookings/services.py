@@ -372,6 +372,7 @@ def create_recurrent_bookings(
         series = BookingSeries.objects.create(
             room=room,
             title=payload.get("title", ""),
+            category=payload.get("category", "study"),
             purpose=payload.get("purpose", ""),
             notes=payload.get("notes", ""),
             expected_attendees=payload.get("expected_attendees", 1),
@@ -398,6 +399,7 @@ def create_recurrent_bookings(
             series=series,
             room=room,
             title=payload.get("title", ""),
+            category=payload.get("category", "study"),
             purpose=payload.get("purpose", ""),
             notes=payload.get("notes", ""),
             expected_attendees=payload.get("expected_attendees", 1),

@@ -17,6 +17,11 @@ export interface BookingFilters {
   status?: string
   series?: number
   booked_by?: number
+  /** Employee id of the teacher the booking is attributed to. */
+  teacher?: number
+  /** Matches a registered teacher or a name that was simply typed in. */
+  teacher_name?: string
+  category?: string
   period?: 'upcoming' | 'past' | 'today'
   date?: string
   recurring?: boolean
@@ -95,9 +100,14 @@ export const bookingService = {
     return data
   },
 
-  async calendar(start: string, end: string, rooms?: number[]): Promise<Booking[]> {
+  /** Agenda feed. Takes the same filters as the list view so both stay in sync. */
+  async calendar(
+    start: string,
+    end: string,
+    filters: { rooms?: number[]; teacher?: number; category?: string; search?: string } = {},
+  ): Promise<Booking[]> {
     const { data } = await api.get<Booking[]>(
-      `/bookings/calendar/${buildQuery({ start, end, rooms })}`,
+      `/bookings/calendar/${buildQuery({ start, end, ...filters })}`,
     )
     return data
   },

@@ -9,6 +9,7 @@ import { Bookings } from '@/pages/Bookings'
 import { Dashboard } from '@/pages/Dashboard'
 import { Login } from '@/pages/Login'
 import { Rooms } from '@/pages/Rooms'
+import { Teachers } from '@/pages/Teachers'
 
 /**
  * The centre's data is public in read-only, so no route requires an account.
@@ -53,9 +54,13 @@ export default function App() {
           </AppShell>
         }
       >
-        <Route path="/" element={<Dashboard />} />
+        {/* The bookings are what the centre opens the site for, so they are
+            the landing page; the dashboard keeps its own address. */}
+        <Route path="/" element={<Bookings />} />
         <Route path="/bookings" element={<Bookings />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/rooms" element={<Rooms />} />
+        <Route path="/teachers" element={<Teachers />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

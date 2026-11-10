@@ -2,6 +2,7 @@ import clsx from 'clsx'
 import {
   CalendarDays,
   DoorOpen,
+  GraduationCap,
   LayoutDashboard,
   LogIn,
   LogOut,
@@ -18,9 +19,10 @@ import { LanguageSwitcher } from './LanguageSwitcher'
 import { NotificationBell } from './NotificationBell'
 
 const NAV_ITEMS = [
-  { to: '/', key: 'nav.dashboard', icon: LayoutDashboard, end: true },
-  { to: '/bookings', key: 'nav.bookings', icon: CalendarDays, end: false },
+  { to: '/', key: 'nav.bookings', icon: CalendarDays, end: true },
   { to: '/rooms', key: 'nav.rooms', icon: DoorOpen, end: false },
+  { to: '/teachers', key: 'nav.teachers', icon: GraduationCap, end: false },
+  { to: '/dashboard', key: 'nav.dashboard', icon: LayoutDashboard, end: false },
 ]
 
 export function Layout() {

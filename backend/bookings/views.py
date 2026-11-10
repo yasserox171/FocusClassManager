@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -85,6 +85,7 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         payload = {
             "title": data["title"],
+            "category": data.get("category", "study"),
             "purpose": data.get("purpose", ""),
             "notes": data.get("notes", ""),
             "expected_attendees": data.get("expected_attendees", 1),
@@ -276,12 +277,20 @@ class BookingViewSet(viewsets.ModelViewSet):
             OpenApiParameter("start", str, required=True, description="ISO 8601"),
             OpenApiParameter("end", str, required=True, description="ISO 8601"),
             OpenApiParameter("rooms", str, description="Comma separated room ids"),
+            OpenApiParameter("teacher", int, description="Employee id of the person who booked"),
+            OpenApiParameter("category", str, description="study | training | meeting | exam | ..."),
+            OpenApiParameter("search", str, description="Free text on title, purpose or person"),
         ],
         responses=BookingSerializer(many=True),
     )
     @action(detail=False, methods=["get"], url_path="calendar")
     def calendar(self, request):
-        """Every booking overlapping a window - feeds the calendar view."""
+        """
+        Every booking overlapping a window - feeds the calendar view.
+
+        The agenda shares its filter bar with the list view, so the same
+        room / teacher / category / search criteria apply here.
+        """
         start = _parse_dt(request.query_params.get("start"), "start")
         end = _parse_dt(request.query_params.get("end"), "end")
         queryset = self.get_queryset().active().in_range(start, end)
@@ -290,6 +299,26 @@ class BookingViewSet(viewsets.ModelViewSet):
         if rooms:
             room_ids = [int(value) for value in rooms.split(",") if value.strip().isdigit()]
             queryset = queryset.filter(room_id__in=room_ids)
+
+        teacher = request.query_params.get("teacher")
+        if teacher and teacher.isdigit():
+            queryset = queryset.filter(booked_by_id=int(teacher))
+
+        category = request.query_params.get("category")
+        if category:
+            queryset = queryset.filter(
+                category__in=[item for item in category.split(",") if item.strip()]
+            )
+
+        search = (request.query_params.get("search") or "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search)
+                | Q(purpose__icontains=search)
+                | Q(booked_by_name__icontains=search)
+                | Q(booked_by__full_name__icontains=search)
+                | Q(room__name__icontains=search)
+            )
 
         return Response(BookingSerializer(queryset.order_by("start_datetime"), many=True).data)
 

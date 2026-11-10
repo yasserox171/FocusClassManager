@@ -24,6 +24,12 @@ export const employeeService = {
     return data.results
   },
 
+  /** Active teachers, unpaginated - feeds the owner selector and the filters. */
+  async teachers(): Promise<Employee[]> {
+    const { data } = await api.get<Employee[]>('/employees/teachers/')
+    return data
+  },
+
   async create(payload: Partial<Employee>): Promise<Employee> {
     const { data } = await api.post<Employee>('/employees/', payload)
     return data

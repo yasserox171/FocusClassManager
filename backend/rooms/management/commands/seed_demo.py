@@ -69,17 +69,26 @@ EMPLOYEES = [
     ("Khadija Idrissi", "khadija@focus.ma", "0661000005", Role.ROOM_MANAGER, "physique"),
     ("Mohamed Saidi", "saidi@focus.ma", "0661000006", Role.STAFF, "administration"),
     ("Salma Tazi", "salma@focus.ma", "0661000007", Role.STAFF, "langues"),
+    # Teachers: the people a booking is usually attributed to.
+    ("Rachid El Amrani", "rachid@focus.ma", "0661000008", Role.TEACHER, "maths"),
+    ("Nadia Benjelloun", "nadia@focus.ma", "0661000009", Role.TEACHER, "physique"),
+    ("Hicham Ouazzani", "hicham@focus.ma", "0661000010", Role.TEACHER, "langues"),
+    ("Imane Berrada", "imane@focus.ma", "0661000011", Role.TEACHER, "informatique"),
+    ("Said Lahlou", "said@focus.ma", "0661000012", Role.TEACHER, "maths"),
 ]
 
+# (title_fr, title_ar, purpose, category)
 COURSES = [
-    ("Cours de Mathématiques", "دروس الرياضيات", "Séance de révision - 2ème Bac"),
-    ("Cours de Physique", "دروس الفيزياء", "Travaux dirigés"),
-    ("Atelier Français", "ورشة الفرنسية", "Expression orale"),
-    ("Atelier Anglais", "ورشة الإنجليزية", "Conversation"),
-    ("Initiation Informatique", "مبادئ المعلوميات", "Bureautique et Internet"),
-    ("Soutien Scolaire", "الدعم المدرسي", "Collège - toutes matières"),
-    ("Réunion Pédagogique", "اجتماع تربوي", "Suivi mensuel des enseignants"),
-    ("Formation Continue", "التكوين المستمر", "Formation des formateurs"),
+    ("Cours de Mathématiques", "دروس الرياضيات", "Séance de révision - 2ème Bac", "study"),
+    ("Cours de Physique", "دروس الفيزياء", "Travaux dirigés", "study"),
+    ("Atelier Français", "ورشة الفرنسية", "Expression orale", "study"),
+    ("Atelier Anglais", "ورشة الإنجليزية", "Conversation", "study"),
+    ("Initiation Informatique", "مبادئ المعلوميات", "Bureautique et Internet", "training"),
+    ("Soutien Scolaire", "الدعم المدرسي", "Collège - toutes matières", "study"),
+    ("Réunion Pédagogique", "اجتماع تربوي", "Suivi mensuel des enseignants", "meeting"),
+    ("Formation Continue", "التكوين المستمر", "Formation des formateurs", "training"),
+    ("Examen Blanc", "امتحان تجريبي", "Simulation d'examen national", "exam"),
+    ("Club de Lecture", "نادي القراءة", "Activité parascolaire", "activity"),
 ]
 
 
@@ -109,8 +118,10 @@ class Command(BaseCommand):
             BookingSeries.objects.all().delete()
             ResourceIssue.objects.all().delete()
             RoomResource.objects.all().delete()
-            Room.all_objects.all().delete()
-            Employee.all_objects.all().delete()
+            # `delete()` on a soft-delete model only stamps `deleted_at`, which
+            # would leave the unique room codes taken and make the re-seed fail.
+            Room.all_objects.all().hard_delete()
+            Employee.all_objects.all().hard_delete()
             Department.objects.all().delete()
             ResourceType.objects.all().delete()
             User.objects.exclude(is_superuser=True).delete()
@@ -272,6 +283,11 @@ class Command(BaseCommand):
 
     def _create_bookings(self, rooms: dict, employees: list, resources: dict) -> dict:
         bookable = [room for room in rooms.values() if room.status == RoomStatus.AVAILABLE]
+        teaching_staff = [
+            person
+            for person in employees
+            if person.role in {Role.TEACHER, Role.DEPARTMENT_MANAGER}
+        ]
         today = timezone.localdate()
         term_start = today - timedelta(days=45)
         term_end = today + timedelta(days=60)
@@ -292,8 +308,8 @@ class Command(BaseCommand):
             room = rooms[room_code]
             if room.status != RoomStatus.AVAILABLE:
                 continue
-            title, title_ar, purpose = COURSES[course_index]
-            employee = random.choice(employees)
+            title, title_ar, purpose, category = COURSES[course_index]
+            employee = random.choice(teaching_staff or employees)
             required = [resources["projector"]] if room_code != "reunion" else []
             required = [item for item in required if room.resources.filter(
                 resource_type=item, condition=ResourceCondition.OK
@@ -303,6 +319,7 @@ class Command(BaseCommand):
                 room=room,
                 payload={
                     "title": f"{title} ({title_ar})",
+                    "category": category,
                     "purpose": purpose,
                     "expected_attendees": random.randint(8, min(room.capacity, 30)),
                     "booked_by": employee,
@@ -328,6 +345,7 @@ class Command(BaseCommand):
             room=rooms["conference"],
             payload={
                 "title": "Réunion Pédagogique (اجتماع تربوي)",
+                "category": "meeting",
                 "purpose": "Suivi mensuel des enseignants",
                 "expected_attendees": 25,
                 "booked_by": employees[0],
@@ -350,19 +368,21 @@ class Command(BaseCommand):
         booking_count += result.created_count
 
         # A handful of one-off bookings spread around today.
-        for offset in range(-20, 21, 3):
+        for index, offset in enumerate(range(-20, 21, 3)):
             day = today + timedelta(days=offset)
             if day.weekday() == 6:
                 continue
             room = random.choice(bookable)
-            title, title_ar, purpose = random.choice(COURSES)
+            title, title_ar, purpose, category = random.choice(COURSES)
             hour = random.choice([8, 11, 15, 18])
-            employee = random.choice(employees)
+            pool = teaching_staff or employees
+            employee = pool[index % len(pool)]
             try:
                 result = create_recurrent_bookings(
                     room=room,
                     payload={
                         "title": f"{title} ({title_ar})",
+                        "category": category,
                         "purpose": purpose,
                         "expected_attendees": random.randint(5, min(room.capacity, 25)),
                         "booked_by": employee,
