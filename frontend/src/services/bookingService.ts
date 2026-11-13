@@ -1,5 +1,7 @@
 import type {
   Booking,
+  SeriesReschedulePayload,
+  SeriesRescheduleResult,
   BookingCreationResult,
   BookingPayload,
   BookingPreview,
@@ -124,6 +126,21 @@ export const bookingService = {
 
   async updateSeries(id: number, payload: Partial<BookingSeries>): Promise<BookingSeries> {
     const { data } = await api.patch<BookingSeries>(`/booking-series/${id}/`, payload)
+    return data
+  },
+
+  /**
+   * Edits a whole series: shared fields, and optionally the room and the time
+   * of day. With `dry_run` it only reports the conflicts, writing nothing.
+   */
+  async rescheduleSeries(
+    id: number,
+    payload: SeriesReschedulePayload,
+  ): Promise<SeriesRescheduleResult> {
+    const { data } = await api.post<SeriesRescheduleResult>(
+      `/booking-series/${id}/reschedule/`,
+      payload,
+    )
     return data
   },
 

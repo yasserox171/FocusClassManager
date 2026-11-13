@@ -423,3 +423,70 @@ class BookingCreationResultSerializer(serializers.Serializer):
     created_count = serializers.IntegerField()
     skipped_count = serializers.IntegerField()
     skipped = ConflictDetailSerializer(many=True)
+
+
+class SeriesRescheduleSerializer(serializers.Serializer):
+    """
+    Edits a recurring series as a whole: the shared fields, and optionally the
+    room and the time of day, which moves every occurrence concerned.
+
+    The recurrence rule itself (which weekdays, which dates) is not touched -
+    changing it means a different series, which is created from the booking
+    form instead.
+    """
+
+    SCOPE_CHOICES = (
+        ("future", "Upcoming occurrences only"),
+        ("all", "Every occurrence of the series"),
+    )
+
+    scope = serializers.ChoiceField(choices=SCOPE_CHOICES, default="future")
+    dry_run = serializers.BooleanField(
+        default=False,
+        help_text="Report the conflicts without writing anything.",
+    )
+    conflict_policy = serializers.ChoiceField(
+        choices=ConflictPolicy.choices, default=ConflictPolicy.STRICT
+    )
+
+    room = serializers.PrimaryKeyRelatedField(
+        queryset=Room.objects.all(), required=False, allow_null=True
+    )
+    title = serializers.CharField(max_length=200, required=False)
+    category = serializers.ChoiceField(choices=BookingCategory.choices, required=False)
+    purpose = serializers.CharField(required=False, allow_blank=True)
+    notes = serializers.CharField(required=False, allow_blank=True)
+    expected_attendees = serializers.IntegerField(min_value=1, required=False)
+    booked_by = serializers.PrimaryKeyRelatedField(
+        queryset=Employee.objects.all(), required=False, allow_null=True
+    )
+    booked_by_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    start_time = serializers.TimeField(required=False)
+    end_time = serializers.TimeField(required=False)
+
+    def validate(self, attrs):
+        series: BookingSeries = self.context["series"]
+        room = attrs.get("room") or series.room
+        start_time = attrs.get("start_time", series.start_time)
+        end_time = attrs.get("end_time", series.end_time)
+
+        if start_time == end_time:
+            raise serializers.ValidationError(
+                {"end_time": "L'heure de fin doit être différente de l'heure de début."}
+            )
+
+        if room.status != RoomStatus.AVAILABLE:
+            raise serializers.ValidationError(
+                {"room": f"La salle « {room.name} » n'est pas disponible."}
+            )
+
+        attendees = attrs.get("expected_attendees", series.expected_attendees)
+        if attendees > room.capacity:
+            raise serializers.ValidationError(
+                {"expected_attendees": f"Capacité maximale de la salle: {room.capacity}."}
+            )
+
+        attrs["_room"] = room
+        attrs["_start_time"] = start_time
+        attrs["_end_time"] = end_time
+        return attrs

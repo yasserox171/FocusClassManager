@@ -329,3 +329,39 @@ export interface NotificationItem {
   is_read: boolean
   created_at: string
 }
+
+
+/** Scope of an edit made from the booking detail panel. */
+export type EditScope = 'occurrence' | 'future' | 'all'
+
+export interface SeriesReschedulePayload {
+  scope: 'future' | 'all'
+  dry_run?: boolean
+  conflict_policy?: ConflictPolicy
+  room?: number | null
+  title?: string
+  category?: BookingCategory
+  purpose?: string
+  notes?: string
+  expected_attendees?: number
+  booked_by?: number | null
+  booked_by_name?: string
+  start_time?: string
+  end_time?: string
+}
+
+export interface SeriesRescheduleConflict {
+  booking_id: number
+  start: string
+  end: string
+  conflicts: ConflictingBooking[]
+}
+
+export interface SeriesRescheduleResult {
+  scope: string
+  occurrences_count: number
+  moved_count: number
+  conflicts_count: number
+  conflicts: SeriesRescheduleConflict[]
+  applied?: boolean
+}

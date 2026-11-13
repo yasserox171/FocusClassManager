@@ -256,7 +256,27 @@
     "laterHours": "Heures suivantes",
     "swipeHint": "Glissez à droite ou à gauche pour changer de jours, vers le haut ou le bas pour les heures.",
     "noBookingsInWindow": "Aucune réservation sur cette période",
-    "ownerOtherStaff": "Autre personnel"
+    "ownerOtherStaff": "Autre personnel",
+    "edit": {
+      "title": "Modifier la séance",
+      "scope": "Portée de la modification",
+      "scopeOccurrence": "Cette séance uniquement",
+      "scopeFuture": "Cette séance et les suivantes",
+      "scopeAll": "Toute la série",
+      "scopeHint": "Réservation récurrente ({{type}}) : choisissez ce que vous modifiez.",
+      "checkButton": "Vérifier les conflits",
+      "noConflict": "Aucun conflit, vous pouvez enregistrer",
+      "conflictFound": "Conflit sur {{count}} séance(s)",
+      "willMove": "{{count}} séance(s) seront modifiées",
+      "conflictPolicy": "En cas de conflit",
+      "policyStrict": "Tout annuler",
+      "policySkip": "Modifier les séances libres et ignorer les autres",
+      "savedOccurrence": "Séance modifiée",
+      "savedSeries": "{{count}} séance(s) modifiée(s)",
+      "skippedSeries": "{{count}} séance(s) ignorée(s) pour cause de conflit",
+      "seriesTimeOnly": "Sur une série, la salle et les horaires sont modifiables ; changer les jours de récurrence demande une nouvelle réservation.",
+      "conflictsWith": "En conflit avec"
+    }
   },
   "employees": {
     "roles": {

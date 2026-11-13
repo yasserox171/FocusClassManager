@@ -256,7 +256,27 @@
     "laterHours": "ساعات لاحقة",
     "swipeHint": "اسحب يميناً أو يساراً لتغيير الأيام، وأعلى أو أسفل لتغيير الساعات.",
     "noBookingsInWindow": "لا توجد حجوزات في هذه الفترة",
-    "ownerOtherStaff": "موظفون آخرون"
+    "ownerOtherStaff": "موظفون آخرون",
+    "edit": {
+      "title": "تعديل الحصة",
+      "scope": "نطاق التعديل",
+      "scopeOccurrence": "هذه الحصة فقط",
+      "scopeFuture": "هذه الحصة والحصص القادمة",
+      "scopeAll": "السلسلة كاملة",
+      "scopeHint": "هذا حجز دوري ({{type}}): اختر ما تريد تعديله.",
+      "checkButton": "التحقق من التعارض",
+      "noConflict": "لا يوجد تعارض، يمكن الحفظ",
+      "conflictFound": "تعارض في {{count}} حصة",
+      "willMove": "سيتم تعديل {{count}} حصة",
+      "conflictPolicy": "في حالة التعارض",
+      "policyStrict": "إلغاء التعديل كاملاً",
+      "policySkip": "تعديل الحصص المتاحة وتجاوز المتعارضة",
+      "savedOccurrence": "تم تعديل الحصة",
+      "savedSeries": "تم تعديل {{count}} حصة",
+      "skippedSeries": "تم تجاوز {{count}} حصة بسبب التعارض",
+      "seriesTimeOnly": "عند تعديل السلسلة يمكن تغيير القاعة والتوقيت؛ أما أيام التكرار فتتطلب إنشاء حجز جديد.",
+      "conflictsWith": "يتعارض مع"
+    }
   },
   "employees": {
     "roles": {

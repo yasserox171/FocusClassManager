@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -15,6 +16,7 @@ from users.permissions import PublicReadAdminWrite
 from .filters import BookingFilter, BookingSeriesFilter
 from .models import Booking, BookingSeries, BookingStatus, ConflictPolicy
 from .serializers import (
+    SeriesRescheduleSerializer,
     BookingCreateSerializer,
     BookingCreationResultSerializer,
     BookingPreviewSerializer,
@@ -24,6 +26,8 @@ from .serializers import (
     SeriesUpdateSerializer,
 )
 from .services import (
+    collision_queryset,
+    occurrence_window,
     BookingConflictError,
     RecurrenceError,
     check_collision,
@@ -355,7 +359,9 @@ class BookingSeriesViewSet(viewsets.ModelViewSet):
     filterset_class = BookingSeriesFilter
     search_fields = ("title", "purpose", "booked_by_name", "room__name")
     ordering_fields = ("start_date", "created_at")
-    http_method_names = ["get", "patch", "put", "delete", "head", "options"]
+    # POST is allowed for the `reschedule` action only: a series is never
+    # created directly, it comes out of the booking form.
+    http_method_names = ["get", "post", "patch", "put", "delete", "head", "options"]
 
     def get_serializer_class(self):
         if self.action in {"update", "partial_update"}:
@@ -372,6 +378,123 @@ class BookingSeriesViewSet(viewsets.ModelViewSet):
         if page is not None:
             return self.get_paginated_response(serializer.data)
         return Response(serializer.data)
+
+    @extend_schema(
+        request=SeriesRescheduleSerializer,
+        responses={200: dict},
+        description=(
+            "Edits a whole recurring series: shared fields, and optionally the "
+            "room and the time of day, which moves the occurrences concerned. "
+            "`dry_run=true` only reports the conflicts, writing nothing."
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="reschedule")
+    def reschedule(self, request, pk=None):
+        """Apply an edit to every occurrence of the series (or only the future ones)."""
+        series = self.get_object()
+        serializer = SeriesRescheduleSerializer(
+            data=request.data, context={"request": request, "series": series}
+        )
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        room = data["_room"]
+        start_time = data["_start_time"]
+        end_time = data["_end_time"]
+        scope = data.get("scope", "future")
+        dry_run = data.get("dry_run", False)
+        policy = data.get("conflict_policy", ConflictPolicy.STRICT)
+
+        occurrences = series.occurrences.filter(status=BookingStatus.CONFIRMED)
+        if scope == "future":
+            occurrences = occurrences.filter(start_datetime__gte=timezone.now())
+        occurrences = list(occurrences.order_by("start_datetime"))
+
+        planned, conflicts = [], []
+        for booking in occurrences:
+            day = timezone.localtime(booking.start_datetime).date()
+            new_start, new_end = occurrence_window(day, start_time, end_time)
+            # The whole series is moving together, so its own occurrences are
+            # never counted as conflicting with each other.
+            clash = list(
+                collision_queryset(room.id, new_start, new_end, exclude_series_id=series.id)
+            )
+            if clash:
+                conflicts.append(
+                    {
+                        "booking_id": booking.id,
+                        "start": new_start.isoformat(),
+                        "end": new_end.isoformat(),
+                        "conflicts": [
+                            {
+                                "id": other.id,
+                                "title": other.title,
+                                "room": other.room.name,
+                                "start": other.start_datetime.isoformat(),
+                                "end": other.end_datetime.isoformat(),
+                                "booked_by": other.booked_by_name,
+                            }
+                            for other in clash
+                        ],
+                    }
+                )
+            else:
+                planned.append((booking, new_start, new_end))
+
+        report = {
+            "scope": scope,
+            "occurrences_count": len(occurrences),
+            "moved_count": len(planned),
+            "conflicts_count": len(conflicts),
+            "conflicts": conflicts,
+        }
+
+        if dry_run:
+            return Response(report)
+
+        if conflicts and policy == ConflictPolicy.STRICT:
+            return Response(
+                {
+                    "detail": "Conflit de réservation: la salle est déjà occupée.",
+                    "code": "booking_conflict",
+                    **report,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        shared = {
+            field: data[field]
+            for field in (
+                "title",
+                "category",
+                "purpose",
+                "notes",
+                "expected_attendees",
+                "booked_by",
+                "booked_by_name",
+            )
+            if field in data
+        }
+
+        with transaction.atomic():
+            for booking, new_start, new_end in planned:
+                booking.room = room
+                booking.start_datetime = new_start
+                booking.end_datetime = new_end
+                for field, value in shared.items():
+                    setattr(booking, field, value)
+                booking.save()
+
+            # The series itself keeps the values its next occurrences carry.
+            series.room = room
+            series.start_time = start_time
+            series.end_time = end_time
+            for field, value in shared.items():
+                setattr(series, field, value)
+            series.save()
+
+        report["applied"] = True
+        return Response(report)
 
     def destroy(self, request, *args, **kwargs):
         """Cancels the series and all of its occurrences (``?purge=true`` deletes)."""

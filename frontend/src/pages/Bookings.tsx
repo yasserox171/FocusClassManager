@@ -6,6 +6,7 @@ import {
   CalendarSearch,
   FilterX,
   List,
+  Pencil,
   Plus,
   Repeat,
   Trash2,
@@ -19,6 +20,7 @@ import { useSearchParams } from 'react-router-dom'
 import { AvailabilityChecker } from '@/components/AvailabilityChecker'
 import { BookingAgenda } from '@/components/BookingAgenda'
 import { BookingCalendar } from '@/components/BookingCalendar'
+import { BookingEditForm } from '@/components/BookingEditForm'
 import { BookingForm } from '@/components/BookingForm'
 import { DataTable } from '@/components/DataTable'
 import {
@@ -85,6 +87,7 @@ export function Bookings() {
   const [checkerOpen, setCheckerOpen] = useState(false)
   const [initialSlot, setInitialSlot] = useState<{ start: Date; end: Date } | null>(null)
   const [selected, setSelected] = useState<Booking | null>(null)
+  const [editing, setEditing] = useState<Booking | null>(null)
   const [deleting, setDeleting] = useState<Booking | null>(null)
   const [deleteScope, setDeleteScope] = useState<DeleteScope>('occurrence')
   const [deleteBusy, setDeleteBusy] = useState(false)
@@ -295,17 +298,27 @@ export function Bookings() {
               {t('common.details')}
             </Button>
             {canEdit(row.original) && row.original.status === 'confirmed' && (
-              <button
-                type="button"
-                onClick={() => {
-                  setDeleting(row.original)
-                  setDeleteScope('occurrence')
-                }}
-                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-                aria-label={t('common.delete')}
-              >
-                <Trash2 size={15} />
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setEditing(row.original)}
+                  className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                  aria-label={t('common.edit')}
+                >
+                  <Pencil size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleting(row.original)
+                    setDeleteScope('occurrence')
+                  }}
+                  className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                  aria-label={t('common.delete')}
+                >
+                  <Trash2 size={15} />
+                </button>
+              </>
             )}
           </div>
         ),
@@ -627,7 +640,14 @@ export function Bookings() {
             )}
 
             {canEdit(selected) && selected.status === 'confirmed' && (
-              <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+              <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
+                <Button
+                  variant="secondary"
+                  icon={<Pencil size={15} />}
+                  onClick={() => setEditing(selected)}
+                >
+                  {t('common.edit')}
+                </Button>
                 <Button
                   variant="danger"
                   icon={<Trash2 size={15} />}
@@ -641,6 +661,31 @@ export function Bookings() {
               </div>
             )}
           </div>
+        )}
+      </Modal>
+
+      {/* Edit */}
+      <Modal
+        open={Boolean(editing)}
+        title={t('bookings.edit.title')}
+        size="lg"
+        onClose={() => setEditing(null)}
+      >
+        {editing && rooms.data ? (
+          <BookingEditForm
+            booking={editing}
+            rooms={rooms.data}
+            employees={employees.data ?? teachers.data ?? []}
+            onSuccess={(message) => {
+              toast.success(message)
+              setEditing(null)
+              setSelected(null)
+              refresh()
+            }}
+            onCancel={() => setEditing(null)}
+          />
+        ) : (
+          <Spinner />
         )}
       </Modal>
 

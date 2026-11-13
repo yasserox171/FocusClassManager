@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from bookings.models import Booking, BookingStatus
+from bookings.models import Booking, BookingSeries, BookingStatus
 from bookings.services import combine
 from employees.models import Employee
 from rooms.models import ResourceCondition, ResourceType, Room, RoomResource, RoomStatus
@@ -736,3 +736,202 @@ class CategoryAndTeacherFilterTests(APITestCase):
         )
         self.assertEqual(response.status_code, 201, response.data)
         self.assertTrue(Employee.objects.filter(full_name="Khadija Idrissi").exists())
+
+
+class EditBookingTests(APITestCase):
+    """Editing one session, or the whole recurring series, with conflict checks."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            username="admin", email="admin@focus.ma", password="Focus!2025", role=Role.ADMIN
+        )
+        self.room = Room.objects.create(name="Salle A", code="sa", capacity=30)
+        self.other_room = Room.objects.create(name="Salle B", code="sb", capacity=30)
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.post(
+            "/api/bookings/",
+            {
+                "room": self.room.id,
+                "title": "Cours hebdomadaire",
+                "category": "study",
+                "expected_attendees": 12,
+                "recurrence_type": "weekly",
+                "weekdays": ["monday"],
+                "start_date": "2027-03-01",
+                "end_date": "2027-03-29",
+                "start_time": "14:00",
+                "end_time": "16:00",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        self.series_id = response.data["series"]["id"]
+        self.occurrences = list(Booking.objects.order_by("start_datetime"))
+        self.assertEqual(len(self.occurrences), 5)
+
+    # -- single occurrence -------------------------------------------------
+    def test_edit_one_occurrence_only(self):
+        booking = self.occurrences[1]
+        response = self.client.patch(
+            f"/api/bookings/{booking.id}/",
+            {
+                "title": "Séance déplacée",
+                "category": "training",
+                "start_datetime": "2027-03-08T09:00:00+01:00",
+                "end_datetime": "2027-03-08T11:00:00+01:00",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        booking.refresh_from_db()
+        self.assertEqual(booking.title, "Séance déplacée")
+        self.assertEqual(booking.category, "training")
+        # The other occurrences keep their own values.
+        untouched = Booking.objects.exclude(pk=booking.pk)
+        self.assertTrue(all(item.title == "Cours hebdomadaire" for item in untouched))
+
+    def test_edit_one_occurrence_into_a_taken_slot_is_refused(self):
+        clash_start = self.occurrences[0].start_datetime
+        Booking.objects.create(
+            room=self.other_room,
+            title="Déjà pris",
+            start_datetime=clash_start,
+            end_datetime=clash_start + timedelta(hours=2),
+        )
+        booking = self.occurrences[1]
+        response = self.client.patch(
+            f"/api/bookings/{booking.id}/",
+            {
+                "room": self.other_room.id,
+                "start_datetime": clash_start.isoformat(),
+                "end_datetime": (clash_start + timedelta(hours=1)).isoformat(),
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_collision_check_endpoint_backs_the_edit_form(self):
+        booking = self.occurrences[0]
+        response = self.client.get(
+            "/api/bookings/check-collision/",
+            {
+                "room": self.room.id,
+                "start": booking.start_datetime.isoformat(),
+                "end": booking.end_datetime.isoformat(),
+                "exclude_booking": booking.id,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["has_conflict"])
+
+    # -- whole series ------------------------------------------------------
+    def test_reschedule_series_moves_every_future_occurrence(self):
+        response = self.client.post(
+            f"/api/booking-series/{self.series_id}/reschedule/",
+            {"scope": "all", "start_time": "17:00", "end_time": "19:00", "title": "Nouveau titre"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["moved_count"], 5)
+        self.assertEqual(response.data["conflicts_count"], 0)
+
+        for booking in Booking.objects.all():
+            local = timezone.localtime(booking.start_datetime)
+            self.assertEqual(local.hour, 17)
+            self.assertEqual(booking.title, "Nouveau titre")
+        series = BookingSeries.objects.get(pk=self.series_id)
+        self.assertEqual(series.start_time.hour, 17)
+
+    def test_reschedule_series_can_change_the_room(self):
+        response = self.client.post(
+            f"/api/booking-series/{self.series_id}/reschedule/",
+            {"scope": "all", "room": self.other_room.id},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertTrue(all(b.room_id == self.other_room.id for b in Booking.objects.all()))
+
+    def test_dry_run_reports_conflicts_without_writing(self):
+        # Occupy the 17:00 slot of the second occurrence in the target room.
+        taken = self.occurrences[1].start_datetime.replace(hour=16)
+        Booking.objects.create(
+            room=self.room,
+            title="Occupé",
+            start_datetime=taken,
+            end_datetime=taken + timedelta(hours=2),
+        )
+        response = self.client.post(
+            f"/api/booking-series/{self.series_id}/reschedule/",
+            {"scope": "all", "start_time": "17:00", "end_time": "19:00", "dry_run": True},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["conflicts_count"], 1)
+        self.assertNotIn("applied", response.data)
+        # Nothing moved.
+        self.assertTrue(
+            all(timezone.localtime(b.start_datetime).hour == 14 for b in Booking.objects.filter(series_id=self.series_id))
+        )
+
+    def test_strict_policy_refuses_the_whole_reschedule(self):
+        taken = self.occurrences[1].start_datetime.replace(hour=16)
+        Booking.objects.create(
+            room=self.room, title="Occupé", start_datetime=taken,
+            end_datetime=taken + timedelta(hours=2),
+        )
+        response = self.client.post(
+            f"/api/booking-series/{self.series_id}/reschedule/",
+            {"scope": "all", "start_time": "17:00", "end_time": "19:00"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data["code"], "booking_conflict")
+        self.assertTrue(
+            all(timezone.localtime(b.start_datetime).hour == 14 for b in Booking.objects.filter(series_id=self.series_id))
+        )
+
+    def test_skip_policy_moves_what_it_can(self):
+        taken = self.occurrences[1].start_datetime.replace(hour=16)
+        Booking.objects.create(
+            room=self.room, title="Occupé", start_datetime=taken,
+            end_datetime=taken + timedelta(hours=2),
+        )
+        response = self.client.post(
+            f"/api/booking-series/{self.series_id}/reschedule/",
+            {
+                "scope": "all",
+                "start_time": "17:00",
+                "end_time": "19:00",
+                "conflict_policy": "skip",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["moved_count"], 4)
+        self.assertEqual(response.data["conflicts_count"], 1)
+        moved = [
+            timezone.localtime(b.start_datetime).hour
+            for b in Booking.objects.filter(series_id=self.series_id).order_by("start_datetime")
+        ]
+        self.assertEqual(moved.count(17), 4)
+        self.assertEqual(moved.count(14), 1)
+
+    def test_reschedule_rejects_a_room_too_small(self):
+        small = Room.objects.create(name="Petite", code="petite", capacity=5)
+        response = self.client.post(
+            f"/api/booking-series/{self.series_id}/reschedule/",
+            {"scope": "all", "room": small.id, "expected_attendees": 12},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("expected_attendees", response.data)
+
+    def test_visitor_cannot_reschedule(self):
+        self.client.force_authenticate(None)
+        response = self.client.post(
+            f"/api/booking-series/{self.series_id}/reschedule/",
+            {"scope": "all", "start_time": "17:00", "end_time": "19:00"},
+            format="json",
+        )
+        self.assertIn(response.status_code, (401, 403))
