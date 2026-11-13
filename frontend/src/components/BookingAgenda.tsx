@@ -10,6 +10,8 @@ import { centerToday, toCenterWallClock } from '@/utils/timezone'
 /** Grid bounds - the centre never books outside of these. */
 const DAY_START_HOUR = 7
 const DAY_END_HOUR = 23
+/** Default window: the centre's teaching hours, 13:00 to 20:00. */
+const DEFAULT_START_HOUR = 13
 const ROW_HEIGHT = 58
 /** Below this, a gesture is a tap, not a swipe. */
 const SWIPE_THRESHOLD = 40
@@ -96,7 +98,7 @@ export function BookingAgenda({
   const isRtl = i18n.language.startsWith('ar')
   const intlLocale = isRtl ? 'ar-MA' : 'fr-FR'
 
-  const [startHour, setStartHour] = useState(8)
+  const [startHour, setStartHour] = useState(DEFAULT_START_HOUR)
   /** Set as soon as the visitor scrolls the hours: auto-fit then steps aside. */
   const [hoursPinnedByUser, setHoursPinnedByUser] = useState(false)
   const touchRef = useRef<{ x: number; y: number } | null>(null)
@@ -117,10 +119,10 @@ export function BookingAgenda({
   )
 
   /**
-   * Centres do not all work at the same hours: some teach in the morning,
-   * others only in the evening. Rather than a fixed 08:00 window that would
-   * open on an empty grid, the window lands on the earliest session of the
-   * days on screen - until the visitor scrolls the hours themselves.
+   * The window opens on the centre's usual hours (13:00 - 20:00). It only
+   * moves by itself when those hours would show an empty grid while the days
+   * on screen do hold sessions - a morning-only day, typically. Scrolling the
+   * hours by hand pins the window and stops the rescue.
    */
   const earliestHour = useMemo(() => {
     let earliest: number | null = null
@@ -131,15 +133,6 @@ export function BookingAgenda({
     }
     return earliest
   }, [bookings, days])
-
-  useEffect(() => {
-    if (hoursPinnedByUser || earliestHour === null) return
-    const fitted = Math.min(
-      Math.max(earliestHour - 1, DAY_START_HOUR),
-      Math.max(DAY_START_HOUR, DAY_END_HOUR - hoursVisible),
-    )
-    setStartHour(fitted)
-  }, [earliestHour, hoursPinnedByUser, hoursVisible])
 
   /** Bookings split per day, then laid out, plus what falls outside the window. */
   const columns = useMemo(() => {
@@ -177,6 +170,19 @@ export function BookingAgenda({
       }
     })
   }, [bookings, days, windowStart, windowEnd])
+
+  // Rescue: sessions exist on screen but all of them fall outside the default
+  // window, so slide the window onto the earliest one instead of showing
+  // nothing. A manual scroll pins the window and disables this.
+  const nothingVisible = columns.every((column) => column.events.length === 0)
+  useEffect(() => {
+    if (hoursPinnedByUser || earliestHour === null || !nothingVisible) return
+    const fitted = Math.min(
+      Math.max(earliestHour - 1, DAY_START_HOUR),
+      Math.max(DAY_START_HOUR, DAY_END_HOUR - hoursVisible),
+    )
+    setStartHour(fitted)
+  }, [earliestHour, hoursPinnedByUser, hoursVisible, nothingVisible])
 
   const hours = Array.from({ length: hoursVisible }, (_, index) => startHour + index)
   const totalOverlaps = columns.filter((column) => column.hasOverlap).length
@@ -243,6 +249,7 @@ export function BookingAgenda({
             type="button"
             onClick={() => {
               setHoursPinnedByUser(false)
+              setStartHour(DEFAULT_START_HOUR)
               onAnchorDateChange(centerToday())
             }}
             className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
@@ -287,19 +294,22 @@ export function BookingAgenda({
         </div>
       </div>
 
-      {/* Day headers */}
-      <div className="grid gap-px" style={{ gridTemplateColumns: gridTemplate }}>
-        <div />
-        {columns.map(({ day, earlier }) => {
-          const isToday = isSameDay(day, now)
-          return (
-            <div
-              key={day.toISOString()}
-              className={clsx(
-                'rounded-t-lg px-1 py-2 text-center',
-                isToday ? 'bg-brand-50' : 'bg-slate-50',
-              )}
-            >
+      {/* Day headers - the spacer mirrors the hour buttons of the grid below,
+          so each header sits exactly above its column. */}
+      <div className="flex items-stretch gap-1">
+        <div className="w-7 shrink-0" aria-hidden />
+        <div className="grid flex-1 gap-px" style={{ gridTemplateColumns: gridTemplate }}>
+          <div />
+          {columns.map(({ day, earlier }) => {
+            const isToday = isSameDay(day, now)
+            return (
+              <div
+                key={day.toISOString()}
+                className={clsx(
+                  'rounded-t-lg px-1 py-2 text-center',
+                  isToday ? 'bg-brand-50' : 'bg-slate-50',
+                )}
+              >
               <p
                 className={clsx(
                   'text-[11px] font-medium uppercase',
@@ -316,19 +326,20 @@ export function BookingAgenda({
               >
                 {new Intl.DateTimeFormat(intlLocale, { day: 'numeric' }).format(day)}
               </p>
-              {earlier > 0 && (
-                <p className="text-[10px] text-slate-400">
-                  {t('bookings.earlierBookings', { count: earlier })}
-                </p>
-              )}
-            </div>
-          )
-        })}
+                {earlier > 0 && (
+                  <p className="text-[10px] text-slate-400">
+                    {t('bookings.earlierBookings', { count: earlier })}
+                  </p>
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       {/* Hour window + grid */}
       <div className="flex items-stretch gap-1">
-        <div className="flex flex-col justify-between py-1">
+        <div className="flex w-7 shrink-0 flex-col justify-between py-1">
           <button
             type="button"
             onClick={() => shiftHours(-1)}

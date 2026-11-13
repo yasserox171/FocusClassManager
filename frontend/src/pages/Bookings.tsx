@@ -66,7 +66,11 @@ export function Bookings() {
   const [calendarView, setCalendarView] = useState<View>(Views.WEEK)
   // The agenda shows a short window of days, browsable by arrows or by swipe.
   const [agendaDate, setAgendaDate] = useState(() => centerToday())
-  const [daysVisible, setDaysVisible] = useState(4)
+  // A phone shows one day at a time: four columns on 390px are unreadable.
+  // 4 and 7 stay one tap away in the agenda's own selector.
+  const [daysVisible, setDaysVisible] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth < 640 ? 1 : 4,
+  )
 
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounced(search)
@@ -352,7 +356,8 @@ export function Bookings() {
         }
       />
 
-      <Card className="mb-4" bodyClassName="p-4">
+      <div className="flex flex-col">
+      <Card className="order-2 mt-4 lg:order-1 lg:mb-4 lg:mt-0" bodyClassName="p-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {/* The search box now applies to every view, agenda included. */}
           <Field label={t('common.search')}>
@@ -463,7 +468,10 @@ export function Bookings() {
         )}
       </Card>
 
-      <Card bodyClassName={mode === 'list' ? 'p-0' : 'p-3 sm:p-5'}>
+      <Card
+        className="order-1 lg:order-2"
+        bodyClassName={mode === 'list' ? 'p-0' : 'p-3 sm:p-5'}
+      >
         {mode === 'agenda' ? (
           <>
             {calendarBookings.loading && <Spinner />}
@@ -514,6 +522,7 @@ export function Bookings() {
           </>
         )}
       </Card>
+      </div>
 
       {/* Create */}
       <Modal
